@@ -1,0 +1,310 @@
+import nodi.*;
+import nodi.expr.*;
+import nodi.statements.ElifOp;
+import nodi.statements.IfOp;
+import nodi.statements.Stat;
+import nodi.statements.WhileOp;
+
+import java.util.ArrayList;
+
+
+terminal VAR, COLON, ASSIGN, UMINUS, SEMI, COMMA, REAL_CONST, INTEGER_CONST, STRING_CONST, TRUE, FALSE, REAL, INTEGER, STRING, BOOLEAN, RETURN, FUNCTION, TYPERETURN, ENDFUNCTION, LPAR, RPAR, PROCEDURE, ENDPROCEDURE, OUT, WRITE, WRITERETURN, DOLLARSIGN, READ, IF, THEN, ELSE, ENDIF, ELIF, WHILE, DO, ENDWHILE, PLUS, MINUS, TIMES, DIV, EQ, NE, LT, LE, GT, GE, AND, OR, NOT, ENDVAR, REF;
+terminal String ID;
+nonterminal ExprOp Expr;
+nonterminal ArrayList<ExprOp> Exprs;
+nonterminal ArrayList<ExprOp> ProcExprs;
+nonterminal ArrayList<ExprOp> IOArgsConcat;
+nonterminal ArrayList<ExprOp> IOArgs;
+nonterminal WhileOp WhileStat;
+nonterminal BodyOp Else;
+nonterminal ElifOp Elif;
+nonterminal ArrayList<ElifOp> Elifs;
+nonterminal IfOp IfStat;
+nonterminal ProcCallOp ProcCall;
+nonterminal FunCallOp FunCall;
+nonterminal Stat Stat;
+nonterminal Type Type;
+nonterminal ArrayList<Type> Types;
+nonterminal Procedure Procedure;
+nonterminal ConstOp Const;
+nonterminal ArrayList<ConstOp> Consts;
+nonterminal ArrayList<Identifier> Ids;
+nonterminal ArrayList<ProcParams> OtherProcParams;
+nonterminal ArrayList<ProcParams> ProcParams;
+nonterminal ArrayList<FuncParams> OtherFuncParams;
+nonterminal ArrayList<FuncParams> FuncParams;
+nonterminal Identifier ProcParamId;
+nonterminal ArrayList<Decls> Decls;
+nonterminal ArrayList<Decls> VarDecl;
+nonterminal ArrayList<Iter> Iter;
+nonterminal ArrayList<Iter> IterNoProcedure;
+nonterminal Function Function;
+nonterminal Program Program;
+nonterminal BodyOp Body;
+precedence left OR;
+precedence left AND;
+precedence right NOT;
+precedence nonassoc EQ, NE, LT, LE, GT, GE;
+precedence left PLUS, MINUS;
+precedence left TIMES, DIV;
+precedence left PROCEDURE;
+
+Program ::= IterNoProcedure:noProc Procedure:proc Iter:iter{:
+
+    RESULT = new Program(noProc,proc,iter);
+:};
+
+IterNoProcedure ::= VarDecl:decl IterNoProcedure:noProcedure {:
+        RESULT = new ArrayList<Iter> ();
+        RESULT.add(new Iter(decl));
+        RESULT.addAll(noProcedure);
+:}
+| Function:func IterNoProcedure:noProcedure {:
+    RESULT = new ArrayList<Iter> ();
+            RESULT.add(new Iter(func));
+            RESULT.addAll(noProcedure);
+
+:}
+| /* empty */ {:
+    RESULT = new ArrayList<Iter>();
+:};
+
+
+Iter ::= VarDecl:decl Iter:iter {:
+    RESULT = new ArrayList<Iter> ();
+    RESULT.add(new Iter(decl));
+    RESULT.addAll(iter);
+:}
+| Function:func Iter:iter {:
+    RESULT = new ArrayList<Iter> ();
+        RESULT.add(new Iter(func));
+        RESULT.addAll(iter);
+:}
+| Procedure:proc Iter:iter {:
+    RESULT = new ArrayList<Iter> ();
+        RESULT.add(new Iter(proc));
+        RESULT.addAll(iter);
+:}
+| /* empty */ {:
+    RESULT = new ArrayList<Iter>();
+:};
+
+
+
+VarDecl ::= VAR Decls:decls{: RESULT = new ArrayList<Decls>();
+                        RESULT.addAll(decls);
+                                   :};
+Decls ::= Ids:ids COLON Type:type SEMI Decls:decls {: RESULT = new ArrayList<Decls>();
+                                                     decls.add(new Decls(ids, type,"Type"));
+                                                     RESULT.addAll(decls);
+                                                   :}
+        | Ids:ids ASSIGN Consts:consts SEMI Decls:decls {: RESULT = new ArrayList<Decls>();
+                                                         decls.add(new Decls(ids, consts,"Assign"));
+                                                         RESULT.addAll(decls);
+                                                       :}
+        | Ids:ids COLON Type:type SEMI ENDVAR {: RESULT = new ArrayList<Decls>();
+                                                RESULT.add(new Decls(ids, type,"Type"));
+
+                                              :}
+        | Ids:ids ASSIGN Consts:consts SEMI ENDVAR {: RESULT = new ArrayList<Decls>();
+                                                      RESULT.add(new Decls(ids, consts,"Assign"));
+                                                    :};
+
+
+
+Ids ::= ID:id COMMA Ids:ids {: RESULT = new ArrayList<Identifier>();
+                                                                RESULT.add(new Identifier(id, "NORMAL"));
+                                                                RESULT.addAll(ids);
+                                                              :}
+        | ID:id {: RESULT = new ArrayList<Identifier>();
+                                                RESULT.add(new Identifier(id,"NORMAL"));
+                                              :};
+
+Consts ::= Const:Const COMMA Consts:consts {:RESULT = new ArrayList<ConstOp>();
+                                                RESULT.add(Const);
+                                                RESULT.addAll(consts);
+                        :}
+	| Const:Const {:RESULT = new ArrayList<ConstOp>();
+	                RESULT.add(Const);:};
+Const ::= REAL_CONST:lessema {: RESULT = new ConstOp("real_const",lessema.toString());:}
+	| INTEGER_CONST:lessema {:RESULT=new ConstOp("integer_const",lessema.toString());:}
+	| STRING_CONST:lessema {: RESULT=new ConstOp("string_const",lessema.toString());:}
+	| TRUE:lessema {: RESULT=new ConstOp("boolean","true");:}
+	| FALSE:lessema {: RESULT=new ConstOp("boolean","false");:};
+
+Type ::= REAL:real {:RESULT = new Type("real");:}
+	| INTEGER:integer {:RESULT = new Type("integer");:}
+	| STRING:string {:RESULT = new Type("string");:}
+	| BOOLEAN:bool {:RESULT = new Type("bool");:};
+
+Function  ::= FUNCTION ID:id LPAR FuncParams:funcParams RPAR TYPERETURN Types:types COLON Body:body ENDFUNCTION {:RESULT = new Function(new Identifier(id,"FUNCID"),funcParams,types,body);:};
+
+FuncParams ::= ID:id COLON Type:type OtherFuncParams:otherFunc {:RESULT = new ArrayList<FuncParams>();
+                                                                     RESULT.add(new FuncParams(new Identifier(id,"FUNCPARAM"),type));
+                                                                     RESULT.addAll(otherFunc);
+                                                                 :}
+	    | /* empty */ {:RESULT = new ArrayList<FuncParams>();:};
+OtherFuncParams ::= COMMA ID:id COLON Type:type OtherFuncParams:otherFunc {:RESULT = new ArrayList<FuncParams>();
+    RESULT.add(new FuncParams(new Identifier(id,"FUNCPARAM"),type));
+    RESULT.addAll(otherFunc);
+:}
+	    | /* empty */{:RESULT = new ArrayList<FuncParams>();:} ;
+
+Types ::= Type:type COMMA Types:types{:RESULT = new ArrayList<Type>();
+                                        RESULT.add(type);
+                                            RESULT.addAll(types);:}
+	| Type:type {:RESULT = new ArrayList<Type>();
+                            RESULT.add(type);
+	            :};
+
+Procedure ::= PROCEDURE ID:id LPAR ProcParams:procParams RPAR COLON Body:body ENDPROCEDURE{:RESULT = new Procedure( new Identifier(id,"PROCID"),procParams,body);:};
+
+ProcParams::= ProcParamId:id COLON Type:type OtherProcParams:procs
+{:
+            RESULT = new ArrayList<ProcParams>();
+            RESULT.add(new ProcParams(id,type));
+            RESULT.addAll(procs);
+:}
+| /* empty */
+{:
+    RESULT = new ArrayList<ProcParams> ();
+:};
+
+OtherProcParams ::= COMMA ProcParamId:id COLON Type:type OtherProcParams:procs
+{:
+        RESULT = new ArrayList<ProcParams>();
+        RESULT.add(new ProcParams(id,type));
+        RESULT.addAll(procs);
+
+:}
+| /* empty */
+{:
+    RESULT = new ArrayList<ProcParams> ();
+:};
+
+
+ProcParamId ::= ID:id {:RESULT = new Identifier(id,"NORMAL");:}
+	    | OUT ID:id{:RESULT = new Identifier(id,"OUT");:};
+Body ::= VarDecl:vardecl Body:body {:
+    ArrayList<Decls> decls = new ArrayList<>();
+    decls.addAll(vardecl);
+    decls.addAll(body.getDecls());
+    RESULT = new BodyOp(body.getStats(),decls);
+:}
+| Stat:stat Body:body {:
+        body.getStats().add(stat);
+    RESULT = new BodyOp(body.getStats(),body.getDecls());
+:}
+| /* empty */ {:
+    RESULT = new BodyOp(new ArrayList<Stat>(), new ArrayList<Decls>());
+:};
+
+
+Stat ::= Ids:ids ASSIGN Exprs:exprs SEMI{:RESULT = new Stat(ids,exprs);:}
+	 | ProcCall:procCall  SEMI{:RESULT = new Stat(procCall);:}
+	 | RETURN Exprs:exprs SEMI{:RESULT = new Stat("RETURN",exprs);:}
+	 | WRITE IOArgs:Ioargs SEMI{:RESULT = new Stat("WRITE",Ioargs);:}
+	 | WRITERETURN IOArgs:Ioargs SEMI{:RESULT = new Stat("WRITERETURN",Ioargs);:}
+	 | READ IOArgs:Ioargs SEMI{:RESULT = new Stat("READ",Ioargs);:}
+	 | IfStat:ifstat SEMI{:RESULT = ifstat;:}
+	 | WhileStat:whilestat SEMI{:RESULT = whilestat;:};
+
+FunCall ::= ID:id LPAR Exprs:listExprs RPAR {:RESULT = new FunCallOp(new Identifier(id,"FUNCALLID"),listExprs);:}           /* chiamata con almeno un parametro */
+         | ID:id LPAR RPAR{:RESULT = new FunCallOp(new Identifier(id,"FUNCALLID"));:};             /* chiamata con nessun parametro */
+
+ProcCall ::= ID:id LPAR ProcExprs:procExprs RPAR {: RESULT = new ProcCallOp(new Identifier(id,"PROCALLID"), procExprs); :}    /* chiamata con almeno un parametro */
+         | ID:id LPAR RPAR {:RESULT = new ProcCallOp(new Identifier(id,"PROCALLID"));:};          /* chiamata con nessun parametro */
+
+IfStat ::= IF Expr:expr THEN Body:body Elifs:elifs Else:Else ENDIF {:if (elifs!=null && Else!=null) {
+            RESULT = new IfOp(expr,body,elifs,Else);}
+            if (Else!=null && elifs==null){ // caso in cui ci sta else ma non ci stanno elifs
+                RESULT = new IfOp(expr,body,Else);
+            }
+            if (Else == null && elifs != null){ // ci sono elifs ma non ci sono else
+                RESULT = new IfOp(expr,body,elifs);
+            }
+            if(Else == null && elifs == null) { // non ci sono elifs e nemmeno else
+                RESULT = new IfOp(expr,body);
+            }
+            :};
+
+Elifs ::= Elif:elif Elifs:elifs{:RESULT = new ArrayList<ElifOp>();
+                                    RESULT.add(elif);
+                                    RESULT.addAll(elifs);:}
+      | /* empty */ {:RESULT = new ArrayList<ElifOp>();:};
+
+Elif ::= ELIF Expr:expr THEN Body:body{:RESULT = new ElifOp(expr,body);:};
+
+Else ::= ELSE Body:body {:RESULT = new BodyOp("ElseOp",body);:}
+     | /* empty */ {:RESULT = new BodyOp();:};
+
+WhileStat ::= WHILE Expr:expr DO Body:body ENDWHILE{:RESULT = new WhileOp(expr,body);:};
+
+IOArgs ::=  IOArgsConcat:strings IOArgs:args
+         {:
+            RESULT = new ArrayList<ExprOp> ();
+            RESULT.addAll(strings);
+            RESULT.addAll(args);
+         :}
+       |  DOLLARSIGN LPAR Expr:expr1 RPAR IOArgs:args
+         {:
+            RESULT = new ArrayList<ExprOp> ();
+            RESULT.add(expr1);
+            RESULT.addAll(args);
+         :}
+       | /* empty */ {: RESULT = new ArrayList<ExprOp>(); :};
+
+IOArgsConcat ::= IOArgsConcat:concat1 PLUS IOArgsConcat:concat2{:RESULT = new ArrayList<ExprOp>();
+RESULT.addAll(concat1);
+RESULT.addAll(concat2);
+:}
+       |  STRING_CONST:lessema {:RESULT =  new ArrayList<ExprOp>(); RESULT.add (new ConstOp("string_const",lessema.toString()));:} ;
+
+
+ProcExprs ::= Expr:expr1 COMMA ProcExprs:exprs {: RESULT = new ArrayList<ExprOp>();
+                                                    RESULT.add(expr1);
+                                                    RESULT.addAll(exprs);
+                                              :}
+           | REF ID:id COMMA ProcExprs:exprs {: RESULT = new ArrayList<ExprOp> ();
+                                                RESULT.add(new Identifier(id,"REF"));
+                                                RESULT.addAll(exprs);
+
+                                              :}
+           | Expr:expr {: RESULT = new ArrayList<ExprOp>();
+                            RESULT.add(expr);
+            :}
+           | REF ID:id {: RESULT = new ArrayList<ExprOp> ();
+                            RESULT.add(new Identifier(id,"REF"));
+            :};
+
+
+Exprs ::= Expr:expr1 COMMA Exprs:exprs {:RESULT = new ArrayList<ExprOp>();
+                                            RESULT.add(expr1);
+                                            RESULT.addAll(exprs);
+                                            :}
+	| Expr:expr{:RESULT = new ArrayList<ExprOp>();
+	            RESULT.add(expr);
+	            :};
+
+Expr ::= FunCall: funCall {:RESULT = funCall;:}
+	| REAL_CONST:lessema{:RESULT=new ConstOp("real_const",lessema.toString());:}
+        |INTEGER_CONST:lessema {:RESULT=new ConstOp("integer_const",lessema.toString());:}
+	| STRING_CONST:lessema {:RESULT=new ConstOp("string_const",lessema.toString());:}
+	| ID:lessema {:RESULT=new Identifier(lessema,"NORMAL");:}
+        | TRUE: lessema {:RESULT=new ConstOp("boolean","true");:}
+        | FALSE: lessema {:RESULT=new ConstOp("boolean","false");:}
+        | Expr:expr1 PLUS Expr:expr2 {:RESULT = new BinaryOP("plusOp",expr1,expr2);:}
+	| Expr:expr1 MINUS Expr:expr2 {:RESULT = new BinaryOP("minusOp",expr1,expr2);:}
+	| Expr:expr1 TIMES Expr:expr2 {:RESULT = new BinaryOP("timesOp",expr1,expr2);:}
+	| Expr:expr1 DIV Expr:expr2 {:RESULT = new BinaryOP("divOp",expr1,expr2);:}
+	| Expr:expr1 AND Expr:expr2 {:RESULT = new BinaryOP("andOp",expr1,expr2);:}
+	| Expr:expr1 OR Expr:expr2 {:RESULT = new BinaryOP("orOp",expr1,expr2);:}
+	| Expr:expr1 GT Expr:expr2 {:RESULT = new BinaryOP("gtOp",expr1,expr2);:}
+	| Expr:expr1 GE Expr:expr2 {:RESULT = new BinaryOP("geOp",expr1,expr2);:}
+	| Expr:expr1 LT Expr:expr2 {:RESULT = new BinaryOP("ltOp",expr1,expr2);:}
+	| Expr:expr1 LE Expr:expr2 {:RESULT = new BinaryOP("leOp",expr1,expr2);:}
+	| Expr:expr1 EQ Expr:expr2 {:RESULT = new BinaryOP("eqOp",expr1,expr2);:}
+	| Expr:expr1 NE Expr:expr2 {:RESULT = new BinaryOP("neOp",expr1,expr2);:}
+	| LPAR Expr:expr1 RPAR {:RESULT = expr1;:}
+	| MINUS Expr: expr1 {:RESULT = new UnaryOp("unaryMinusOp",expr1);:} %prec UMINUS
+	| NOT Expr: expr1 {:RESULT = new UnaryOp("notOp",expr1);:};
