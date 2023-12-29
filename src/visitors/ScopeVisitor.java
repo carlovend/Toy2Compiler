@@ -10,6 +10,7 @@ import tables.FieldType;
 import tables.Row;
 import tables.SymbolTable;
 
+import java.io.PrintStream;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
 
@@ -99,7 +100,7 @@ public class ScopeVisitor implements Visitor{
     public Object visit(ProcParams procParams) {
         ArrayList<Row> rows = new ArrayList<>();
         if (procParams != null) {
-            Row r = new Row(procParams.getId().getId(),ProcParams.class,new FieldType.TypeVar(procParams.getType().toString()),"");
+            Row r = new Row(procParams.getId().getId(),ProcParams.class,new FieldType.TypeVar(procParams.getType().getType()),"");
             rows.add(r);
         }
         return rows;
@@ -137,7 +138,7 @@ public class ScopeVisitor implements Visitor{
         table.setFather(father);
         ifOp.setElseTable(new SymbolTable());
         SymbolTable elseTable = ifOp.getElseTable();
-        elseTable.setScope("If-Else");
+        elseTable.setScope("Else-Then");
         elseTable.setFather(father);
 
         if (ifOp.getBodyOpIf() != null) {
@@ -237,7 +238,7 @@ public class ScopeVisitor implements Visitor{
 
                 String type = null;
                 if (decls.getType()!=null) {
-                    type = decls.getType().toString();
+                    type = decls.getType().getType();
                 }else {
                     type="";
                 }
@@ -255,7 +256,7 @@ public class ScopeVisitor implements Visitor{
     public Object visit(FuncParams funcParams) {
         ArrayList<Row> rows = new ArrayList<>();
         if (funcParams != null) {
-            Row r = new Row(funcParams.getId().getId(),ProcParams.class,new FieldType.TypeVar(funcParams.getType().toString()),"");
+            Row r = new Row(funcParams.getId().getId(),FuncParams.class,new FieldType.TypeVar(funcParams.getType().getType()),"");
             rows.add(r);
         }
         return rows;
@@ -266,7 +267,10 @@ public class ScopeVisitor implements Visitor{
         function.setTable(new SymbolTable());
         SymbolTable symbolTable = function.getTable();
         symbolTable.setFather(father);
-        symbolTable.setScope(function.getId().getValue());
+        symbolTable.setScope(function.getId().getId()+function.toString());
+
+        /*Row functionIdRow = new Row(function.getId().getId(), Function.class, new FieldType.TypeVar(function.getId().getValue()), "");
+        symbolTable.addRow(functionIdRow);*/
 
         if (function.getFunc()!=null) {
             for (FuncParams f: function.getFunc()) {
@@ -283,6 +287,7 @@ public class ScopeVisitor implements Visitor{
             function.getBody().accept(this);
         }
         FieldType t = new FieldType();
+        father = symbolTable.getFather();
         return new Row(function.getId().getId(),Function.class,t,"");
     }
 
@@ -290,10 +295,7 @@ public class ScopeVisitor implements Visitor{
     @Override
     public Object visit(Iter iter) throws Exception {
         c++;
-        iter.setTable(new SymbolTable());
-        SymbolTable symbolTable = iter.getTable();
-        symbolTable.setFather(father);
-        symbolTable.setScope(iter.toString());
+
         System.out.println("sonoin iter     "+c);
 
         if (iter.getDecls() != null) {
@@ -302,28 +304,26 @@ public class ScopeVisitor implements Visitor{
                 System.out.println(iter.getDecls().size());
                 varList = (ArrayList<Row>) d.accept(this);
                 for (Row r : varList) {
-                    symbolTable.addRow(r);
+                    father.addRow(r);
                 }
             }
 
         }
         if (iter.getFunction()!=null) {
-
             Row functionList;
                 functionList = (Row) iter.getFunction().accept(this);
-                    symbolTable.addRow(functionList);
-
-
+                System.out.println(functionList.getSymbol()+father.getScope()+"SAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
+                    father.addRow(functionList);
         }
 
         if (iter.getProc()!=null) {
             Row proc = null;
             proc = (Row) iter.getProc().accept(this);
-            symbolTable.addRow(proc);
+            father.addRow(proc);
         }
         FieldType t = new FieldType();
-        father = iter.getTable().getFather();
-        return new Row(iter.toString()+c,Iter.class,t,"");
+
+        return null;
     }
 
     @Override
@@ -376,10 +376,7 @@ public class ScopeVisitor implements Visitor{
             System.out.println(program.getIter().size());
             for (Iter i : program.getIter()) {
                 iterList = (ArrayList<Row>) i.accept(this);
-                for (Row r:
-                     iterList) {
-                    symbolTable.addRow(r);
-                }
+
             }
         }
 
@@ -387,7 +384,7 @@ public class ScopeVisitor implements Visitor{
             Row iterList;
             for (Iter i : program.getNoProc()) {
                 iterList = (Row) i.accept(this);
-                symbolTable.addRow(iterList);
+
             }
         }
 

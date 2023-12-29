@@ -11,6 +11,10 @@ public class Type extends DefaultMutableTreeNode {
         this.type = type;
     }
 
+    public String getType() {
+        return type;
+    }
+
     @Override
     public String toString() {
         return super.toString();

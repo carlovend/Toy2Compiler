@@ -3,8 +3,10 @@ package nodi.statements;
 import nodi.BodyOp;
 import nodi.expr.ExprOp;
 import tables.SymbolTable;
+import visitors.Visitable;
+import visitors.Visitor;
 
-public class WhileOp extends Stat{
+public class WhileOp extends Stat implements Visitable {
 
     private ExprOp exprOp;
     private BodyOp bodyOp;
@@ -41,6 +43,11 @@ public class WhileOp extends Stat{
 
     public void setBodyOp(BodyOp bodyOp) {
         this.bodyOp = bodyOp;
+    }
+
+    @Override
+    public Object accept(Visitor v) throws Exception {
+        return v.visit(this);
     }
 
     @Override
