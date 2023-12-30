@@ -1,9 +1,13 @@
 package nodi.expr;
 
+import nodi.statements.Stat;
+import visitors.Visitable;
+import visitors.Visitor;
+
 import javax.swing.tree.DefaultMutableTreeNode;
 import java.util.ArrayList;
 
-public class ProcCallOp extends DefaultMutableTreeNode {
+public class ProcCallOp extends Stat implements Visitable {
     private Identifier id;
     private ArrayList<ExprOp> exprsList;
 
@@ -14,11 +18,13 @@ public class ProcCallOp extends DefaultMutableTreeNode {
         }
         super.add(id);
         this.id = id;
+        this.exprsList = procExprs;
     }
 
     public ProcCallOp(Identifier id) {
         super("ProcCall");
         super.add(id);
+        this.id = id;
     }
 
     // caso in cui ci sono le espressioni
@@ -39,6 +45,11 @@ public class ProcCallOp extends DefaultMutableTreeNode {
 
     public ArrayList<ExprOp> getExprsList(){
         return this.exprsList;
+    }
+
+    @Override
+    public Object accept(Visitor v) throws Exception {
+        return v.visit(this);
     }
 
     @Override

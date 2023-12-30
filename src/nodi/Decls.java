@@ -14,6 +14,7 @@ public class Decls extends DefaultMutableTreeNode implements Visitable {
     private ArrayList<Identifier> ids;
     private Type type;
     private ArrayList<Decls> decls;
+    String type1;
     private ArrayList<ConstOp> consts;
 
 
@@ -27,6 +28,7 @@ public class Decls extends DefaultMutableTreeNode implements Visitable {
 
         this.ids = ids;
         this.type = type;
+        this.type1 = type1;
     }
 
     public ArrayList<Identifier> getIds() {
@@ -34,7 +36,7 @@ public class Decls extends DefaultMutableTreeNode implements Visitable {
     }
 
 
-    public Decls(ArrayList<Identifier> ids, ArrayList<ConstOp> consts, String assign) {
+    public Decls(ArrayList<Identifier> ids, ArrayList<ConstOp> consts, String type1) {
         super("DeclsOp");
         for (Identifier id: ids) {
             super.add(id);
@@ -42,10 +44,23 @@ public class Decls extends DefaultMutableTreeNode implements Visitable {
         for (ConstOp c : consts) {
             super.add(c);
         }
-        super.add(new DefaultMutableTreeNode(assign));
+        super.add(new DefaultMutableTreeNode(type1));
 
         this.ids = ids;
+        this.consts = consts;
+        this.type1 = type1;
+    }
 
+    public String getType1() {
+        return type1;
+    }
+
+    public ArrayList<ConstOp> getConsts() {
+        return consts;
+    }
+
+    public void setType1(String type1) {
+        this.type1 = type1;
     }
 
     public Type getType() {

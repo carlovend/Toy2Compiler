@@ -10,6 +10,7 @@ import parser_lexer.sym;
 import tables.Row;
 import tables.SymbolTable;
 import visitors.ScopeVisitor;
+import visitors.TypeVisitor;
 
 import javax.swing.*;
 import javax.swing.tree.DefaultMutableTreeNode;
@@ -89,6 +90,7 @@ public class App {
         DefaultMutableTreeNode root = (DefaultMutableTreeNode) p.parse().value;
         //tree=new JTree(root);
         ((Program) root).accept(new ScopeVisitor());
+        ((Program) root).accept(new TypeVisitor());
         int a;
     }
 

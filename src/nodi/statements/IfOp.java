@@ -123,6 +123,15 @@ public class IfOp extends  Stat implements Visitable {
         this.elifTable = elifTable;
     }
 
+    @Override
+    public ArrayList<ExprOp> getExprs() {
+        return super.getExprs();
+    }
+
+    public ExprOp getExprOpStat() {
+        return exprOpStat;
+    }
+
     public String toString() {
         return super.toString();
     }

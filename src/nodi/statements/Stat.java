@@ -27,10 +27,11 @@ public class Stat extends DefaultMutableTreeNode implements Visitable {
         }
 
         this.exprs = exprs;
+        this.ids = ids;
     }
 
     public Stat(ProcCallOp procCallOp) {
-        super("ProcCallStat");
+        super("ProcCallOp");
         super.add(procCallOp);
         this.procCallOp = procCallOp;
     }

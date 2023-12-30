@@ -12,11 +12,11 @@ public interface Visitor {
     public Object visit(BinaryOP binaryOP) throws Exception;
     public Object visit(ConstOp constOp);
     public Object visit(ExprOp exprOp) throws Exception;
-    public Object visit(FunCallOp funCallOp);
+    public Object visit(FunCallOp funCallOp) throws Exception;
     public Object visit(Identifier identifier) throws Exception;
     public Object visit(IoArgs ioArgs);
     public Object visit(IoArgsConcat ioArgsConcat);
-    public Object visit(ProcCallOp procCallOp);
+    public Object visit(ProcCallOp procCallOp) throws Exception;
     //public Object visit(ProcExprOp procExprOp);
     public Object visit(ProcParams procParams);
     public Object visit(UnaryOp unaryOp) throws Exception;

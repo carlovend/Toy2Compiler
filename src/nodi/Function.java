@@ -27,7 +27,7 @@ public class Function extends DefaultMutableTreeNode  implements Visitable {
         super.add(body);
         this.id = id;
         this.func = func;
-        //this.types = types;
+        this.types = types;
         this.body = body;
     }
 

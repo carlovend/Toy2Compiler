@@ -53,6 +53,7 @@ public class ScopeVisitor implements Visitor{
         exprOp.accept(this);
         }
         if (exprOp instanceof Identifier) {
+            System.out.println(exprOp.toString());
             exprOp.accept(this);
         }
         if (exprOp instanceof ConstOp) {
@@ -65,19 +66,31 @@ public class ScopeVisitor implements Visitor{
     }
 
     @Override
-    public Object visit(FunCallOp funCallOp) {
+    public Object visit(FunCallOp funCallOp) throws Exception {
+        if (!funCallOp.getExprsList().isEmpty()) {
+            for (ExprOp e : funCallOp.getExprsList()) {
+                e.accept(this);
+            }
+        }
         return null;
     }
 
     @Override
     public Object visit(Identifier identifier) throws Exception {
-
-        if (father.lookUp(identifier.getValue())==null) {
+        SymbolTable tmp = father;
+        while (father!=null) {
+        if (father.lookUp(identifier.getId())!=null) {
             //TODO FARE Exception
-            throw new Exception("Nessuna dichiarazione");
+            return true;
+
+
+        }else {
+            father = father.getFather();}
+
         }
 
-        return null;
+    father = tmp;
+        throw new Exception("Nessuna dichiarazione");
     }
 
     @Override
@@ -91,8 +104,12 @@ public class ScopeVisitor implements Visitor{
     }
 
     @Override
-    public Object visit(ProcCallOp procCallOp) {
-
+    public Object visit(ProcCallOp procCallOp) throws Exception {
+        if (procCallOp.getExprsList().size()>0) {
+            for (ExprOp e : procCallOp.getExprsList()) {
+                    e.accept(this);
+            }
+        }
         return null;
     }
 
@@ -154,7 +171,7 @@ public class ScopeVisitor implements Visitor{
         }
 
         if (ifOp.getElseBody() != null) {
-            System.out.println("sono else");
+
             father = ifOp.getElseTable();
             ifOp.getElseBody().getBody().accept(this);
         }
@@ -165,7 +182,23 @@ public class ScopeVisitor implements Visitor{
     @Override
     public Object visit(Stat stat) throws Exception {
 
+        if (!(stat instanceof WhileOp) && !(stat instanceof IfOp) && !(stat instanceof ElifOp) && !(stat instanceof ProcCallOp)) {
+
+            for (Identifier i: stat.getIds()) {
+                i.accept(this);
+            }
+            if (!stat.getExprs().isEmpty()) {
+                if (stat.getExprs().get(0) instanceof FunCallOp) {
+                    stat.getExprs().get(0).accept(this);
+                }
+            }
+        }
+
         if (stat instanceof WhileOp) {
+            stat.accept(this);
+        }
+
+        if (stat instanceof ProcCallOp) {
             stat.accept(this);
         }
 
@@ -200,10 +233,9 @@ public class ScopeVisitor implements Visitor{
         if (bodyOp.getDecls()!=null) {
             ArrayList<Row> varList;
             for (Decls d:bodyOp.getDecls()) {
-                System.out.println(d.getIds().get(0).getId().toString());
+
                 varList = (ArrayList<Row>) d.accept(this);
                 for (Row r:varList) {
-                    System.out.println(r.toString()+"sono nel bodyaaaa");
                     father.addRow(r);
                 }
             }
@@ -212,6 +244,11 @@ public class ScopeVisitor implements Visitor{
          if (bodyOp.getStats() != null) {
 
              for (Stat s:bodyOp.getStats()) {
+                 if (!(s instanceof WhileOp) && !(s instanceof IfOp) && !(s instanceof ElifOp) &&!(s instanceof ProcCallOp)) {
+                     if (s.getIds() != null && s.getIds().size() > 0) {
+                         s.accept(this);
+                     }
+                 }
                  if (s instanceof WhileOp) {
                      s.accept(this);
                  }
@@ -222,6 +259,10 @@ public class ScopeVisitor implements Visitor{
                  if (s instanceof ElifOp) {
                      s.accept(this);
                  }
+                if (s instanceof ProcCallOp) {
+                    System.out.println(s.toString()+"PROCCAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAL");
+                    s.accept(this);
+                }
              }
          }
 
@@ -231,7 +272,7 @@ public class ScopeVisitor implements Visitor{
     @Override
     public Object visit(Decls decls) throws Exception {
         ArrayList<Row> rows = new ArrayList<>();
-
+        int c = 0;
 
         if (decls != null && decls.getIds() != null) {
             for (Identifier id : decls.getIds()) {
@@ -239,9 +280,12 @@ public class ScopeVisitor implements Visitor{
                 String type = null;
                 if (decls.getType()!=null) {
                     type = decls.getType().getType();
-                }else {
-                    type="";
+                } else if (decls.getType1().equals("Assign")) {
+                        type = decls.getConsts().get(c).getType();
+                        c++;
                 }
+
+
                 FieldType.TypeVar t = new FieldType.TypeVar(type);
                 Row row = new Row(id.getId(),Decls.class,t,"");
                 rows.add(row);
@@ -269,8 +313,8 @@ public class ScopeVisitor implements Visitor{
         symbolTable.setFather(father);
         symbolTable.setScope(function.getId().getId()+function.toString());
 
-        /*Row functionIdRow = new Row(function.getId().getId(), Function.class, new FieldType.TypeVar(function.getId().getValue()), "");
-        symbolTable.addRow(functionIdRow);*/
+        Row functionIdRow = new Row(function.getId().getId(), Function.class, new FieldType.TypeVar(function.getId().getValue()), "");
+        symbolTable.addRow(functionIdRow);
 
         if (function.getFunc()!=null) {
             for (FuncParams f: function.getFunc()) {
@@ -282,7 +326,7 @@ public class ScopeVisitor implements Visitor{
         }
 
         if (function.getBody() != null) {
-            System.out.println("sono nel body function");
+
             father = function.getTable();
             function.getBody().accept(this);
         }
@@ -294,14 +338,12 @@ public class ScopeVisitor implements Visitor{
     int c =0;
     @Override
     public Object visit(Iter iter) throws Exception {
-        c++;
 
-        System.out.println("sonoin iter     "+c);
 
         if (iter.getDecls() != null) {
             ArrayList<Row> varList= new ArrayList<>();
             for (Decls d : iter.getDecls()) {
-                System.out.println(iter.getDecls().size());
+
                 varList = (ArrayList<Row>) d.accept(this);
                 for (Row r : varList) {
                     father.addRow(r);
@@ -312,7 +354,7 @@ public class ScopeVisitor implements Visitor{
         if (iter.getFunction()!=null) {
             Row functionList;
                 functionList = (Row) iter.getFunction().accept(this);
-                System.out.println(functionList.getSymbol()+father.getScope()+"SAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
+
                     father.addRow(functionList);
         }
 
@@ -329,28 +371,31 @@ public class ScopeVisitor implements Visitor{
     @Override
     public Object visit(Procedure procedure) throws Exception {
 
-            procedure.setTable(new SymbolTable());
-            SymbolTable symbolTable = procedure.getTable();
-            symbolTable.setFather(father);
-            symbolTable.setScope(procedure.getId().getValue());
+        procedure.setTable(new SymbolTable());
+        SymbolTable symbolTable = procedure.getTable();
+        symbolTable.setFather(father);
+        symbolTable.setScope(procedure.getId().getId()+procedure.toString());
 
-            if (procedure.getProcParams()!=null) {
-                    for (ProcParams p: procedure.getProcParams()) {
-                        ArrayList<Row> procList = (ArrayList<Row>) p.accept(this);
-                        for (Row r: procList) {
-                            symbolTable.addRow(r);
-                        }
-                    }
-            }
+        Row functionIdRow = new Row(procedure.getId().getId(), Function.class, new FieldType.TypeVar(procedure.getId().getValue()), "");
+        symbolTable.addRow(functionIdRow);
 
-            if (procedure.getBody() != null) {
-                System.out.println("sono nel body procedure");
-                father = procedure.getTable();
-                procedure.getBody().accept(this);
+        if (procedure.getProcParams()!=null) {
+            for (ProcParams p: procedure.getProcParams()) {
+                ArrayList<Row> procList = (ArrayList<Row>) p.accept(this);
+                for (Row r: procList) {
+                    symbolTable.addRow(r);
+                }
             }
-            FieldType t = new FieldType();
-            father = procedure.getTable().getFather();
-            return new Row(procedure.getId().getId(),Procedure.class,t,"");
+        }
+
+        if (procedure.getBody() != null) {
+
+            father = procedure.getTable();
+            procedure.getBody().accept(this);
+        }
+        FieldType t = new FieldType();
+        father = symbolTable.getFather();
+        return new Row(procedure.getId().getId(),Procedure.class,t,"");
     }
 
     @Override
@@ -371,11 +416,10 @@ public class ScopeVisitor implements Visitor{
         }
 
         if (program.getIter().size()>0) {
-            System.out.println("sono nel program iter");
-            ArrayList<Row> iterList = new ArrayList<>();
-            System.out.println(program.getIter().size());
+
+            Row iterList;
             for (Iter i : program.getIter()) {
-                iterList = (ArrayList<Row>) i.accept(this);
+                iterList = (Row) i.accept(this);
 
             }
         }

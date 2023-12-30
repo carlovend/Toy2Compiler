@@ -9,6 +9,7 @@ public class SymbolTable {
     private ArrayList<Row> rowList;
     private static boolean shadowing = true;
 
+    private ArrayList<SymbolTable> allTables;
     public SymbolTable() {
         father=null;
         rowList = new ArrayList<>();

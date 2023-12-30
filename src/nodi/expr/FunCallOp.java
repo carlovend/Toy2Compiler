@@ -1,5 +1,6 @@
 package nodi.expr;
 
+import nodi.statements.Stat;
 import visitors.Visitable;
 import visitors.Visitor;
 
