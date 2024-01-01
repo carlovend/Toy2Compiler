@@ -7,7 +7,7 @@ import javax.swing.tree.DefaultMutableTreeNode;
 
 public class Identifier extends ExprOp implements Visitable {
     private String id; //sarebbe il lessemam
-    String value;
+    private String value;
     public Identifier(String id, String value){
         super("Identifier");
         super.add(new DefaultMutableTreeNode(id));

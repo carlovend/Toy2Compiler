@@ -250,6 +250,10 @@ IOArgs ::=  IOArgsConcat:strings IOArgs:args
          {:
             RESULT = new ArrayList<ExprOp> ();
             RESULT.add(expr1);
+            expr1.setDollar();
+            if (expr1 instanceof Identifier) {
+                expr1.setIsId();
+            }
             RESULT.addAll(args);
          :}
        | /* empty */ {: RESULT = new ArrayList<ExprOp>(); :};

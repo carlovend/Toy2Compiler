@@ -13,6 +13,7 @@ import tables.SymbolTable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
+import java.util.List;
 
 public class TypeVisitor implements Visitor {
 
@@ -127,8 +128,6 @@ public class TypeVisitor implements Visitor {
         }
 
         if (exprOp instanceof Identifier) {
-            System.out.println(exprOp.getType()+"PALEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEESDSDS");
-
             type = (String) exprOp.accept(this);
 
         }
@@ -142,7 +141,7 @@ public class TypeVisitor implements Visitor {
 
     @Override
     public Object visit(FunCallOp funCallOp) throws Exception {
-
+        ArrayList<String> typeExpr = new ArrayList<>();
         Row result = currentScope.lookUp(funCallOp.getId().getId());
         if (result == null) {
             throw new Exception("La funzione non esiste");
@@ -157,7 +156,7 @@ public class TypeVisitor implements Visitor {
                 if (nParametri != nParamChiam) {
                     throw new Exception("Il numero di parametri non coincide");
                 }else {
-                    ArrayList<String> typeExpr = new ArrayList<>();
+
                     for (ExprOp e: funCallOp.getExprsList()) {
                         String type = (String) e.accept(this);
                         typeExpr.add(type);
@@ -180,7 +179,7 @@ public class TypeVisitor implements Visitor {
         }
 
 
-        return null;
+        return typeExpr;
     }
 
     @Override
@@ -227,7 +226,14 @@ public class TypeVisitor implements Visitor {
 
     @Override
     public Object visit(ProcCallOp procCallOp) throws Exception {
+        ArrayList<String> typeExpr = new ArrayList<>();
         Row r = currentScope.lookUp(procCallOp.getId().getId());
+        FieldType.TypeFunction dec = (FieldType.TypeFunction) r.getType();
+        ArrayList<String> inputParams= dec.getInputParams();
+        ArrayList<String> parametriConOut = ((FieldType.TypeFunction) r.getType()).getOutputParams();
+        int nParametriConOut = parametriConOut.size();
+        int nParametri = inputParams.size();
+        int nProcParams = 0;
         if (r == null) {
             throw new Exception("LA PROCEDURA NON ESISTE");
         }else {
@@ -235,10 +241,56 @@ public class TypeVisitor implements Visitor {
                 for (ExprOp e: procCallOp.getExprsList()) {
                     if (e instanceof FunCallOp) {
                         System.out.println("CURRENTSCOPE NEL PROCCALL");
-                        e.accept(this);
+                         typeExpr = (ArrayList<String>) e.accept(this);
+                    }else {
+                        String t = (String) e.accept(this);
+                        typeExpr.add(t);
+                    }
+                }
+
+                nProcParams = nProcParams +typeExpr.size();
+                if (nParametri!=nProcParams) {
+                    System.out.println(nProcParams+"SUCAMI"+nParametri+"SUCAMI2"+typeExpr.size());
+
+                    throw new Exception("I PARAMETRI DELLA CHIAMATA DELLA PORC NON COINCIDONO");
+                }
+                ArrayList<String> tipiDellaChiamata = ((FieldType.TypeFunction) r.getType()).getInputParams();
+                Iterator<String> iter1 = Arrays.asList(String.valueOf(tipiDellaChiamata)).iterator();
+                 Iterator<String> iter2 = Arrays.asList(String.valueOf(typeExpr)).iterator();
+                while (iter1.hasNext() && iter2.hasNext()) {
+                    String type = iter1.next();
+                    String typeOfId = iter2.next();
+                    System.out.println(type+typeOfId);
+                    if (!type.equals(typeOfId)) {
+                        throw new Exception("Tipi non validi nella procedura");
+                    }
+            }
+                ArrayList<String> refValue = new ArrayList<>();
+                List<String> list1 = ((FieldType.TypeFunction) r.getType()).getOutputParams();
+            if (procCallOp.getExprsList()!=null) {
+            for (ExprOp e : procCallOp.getExprsList()) {
+                if (e instanceof Identifier) {
+                    refValue.add(((Identifier) e).getValue());
+                }
+            }}
+                List<String> list2 = (refValue);
+            if (list1.size()!=list2.size()) {
+                throw new Exception("ERRORE NEI REF E NEGLI OUT");
+            }
+                for (int i = 0; i < list1.size() && i < list2.size(); i++) {
+                    String type = list1.get(i);
+                    String typeOfId = list2.get(i);
+                    System.out.println(type + typeOfId + " CONTROLLO I REF");
+                    if ((type.equals("NORMAL") && typeOfId.equals("REF")) || (type.equals("OUT") && !typeOfId.equals("REF"))) {
+                        throw new Exception("Tipi non validi per i ref e per gli out");
                     }
                 }
             }
+        }
+
+        if (nProcParams!=nParametri) {
+            System.out.println(nProcParams+nParametri+"PORCODIOOOOOOOOOOOOOOOOOOOOOO");
+            throw new Exception("I PARAMETRI DELLA CHIAMATA DELLA PORC NON COINCIDONO");
         }
         return null;
     }

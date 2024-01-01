@@ -50,18 +50,23 @@ public class ScopeVisitor implements Visitor{
     @Override
     public Object visit(ExprOp exprOp) throws Exception {
         if (exprOp instanceof UnaryOp) {
-        exprOp.accept(this);
+            String t = (String) exprOp.accept(this);
+            return false;
         }
         if (exprOp instanceof Identifier) {
-            System.out.println(exprOp.toString());
-            exprOp.accept(this);
+            String t = (String) exprOp.accept(this);
+            return true;
         }
         if (exprOp instanceof ConstOp) {
-            exprOp.accept(this);
+         String t = (String) exprOp.accept(this);
+            return false;
         }
         if (exprOp instanceof BinaryOP) {
-            exprOp.accept(this);
+            String t = (String) exprOp.accept(this);
+            return false;
         }
+
+
         return null;
     }
 
@@ -103,10 +108,11 @@ public class ScopeVisitor implements Visitor{
 
     @Override
     public Object visit(ProcCallOp procCallOp) throws Exception {
+        if (procCallOp.getExprsList()!=null) {
         if (procCallOp.getExprsList().size()>0) {
             for (ExprOp e : procCallOp.getExprsList()) {
                     e.accept(this);
-            }
+            }}
         }
         return null;
     }
@@ -179,6 +185,27 @@ public class ScopeVisitor implements Visitor{
 
     @Override
     public Object visit(Stat stat) throws Exception {
+        System.out.println(stat.getValue()+"SONO NEL FOTTYTO");
+        if (stat.getValue()!=null) {
+            if (stat.getValue().equals("WRITE")) {
+                if (!stat.getExprs().isEmpty()) {
+                    for (ExprOp e : stat.getExprs()) {
+                        e.accept(this);
+                    }
+                }
+                return null;
+            }
+            if (stat.getValue().equals("READ")) {
+                for (ExprOp exprOp: stat.getExprs()) {
+                    System.out.println(exprOp + "SUCATEMELEEEE");
+                    if (exprOp.isDollar()  && !exprOp.isId()) {
+                        throw new Exception("SONO CONCESSI SOLO ID");
+                    }
+                    exprOp.accept(this);
+                }
+            return null;
+            }
+        }
 
         if (!(stat instanceof WhileOp) && !(stat instanceof IfOp) && !(stat instanceof ElifOp) && !(stat instanceof ProcCallOp)) {
 
@@ -207,6 +234,8 @@ public class ScopeVisitor implements Visitor{
         if (stat instanceof ElifOp) {
             stat.accept(this);
         }
+
+
         return null;
     }
 
@@ -243,7 +272,7 @@ public class ScopeVisitor implements Visitor{
 
              for (Stat s:bodyOp.getStats()) {
                  if (!(s instanceof WhileOp) && !(s instanceof IfOp) && !(s instanceof ElifOp) &&!(s instanceof ProcCallOp)) {
-                     if (s.getIds() != null && s.getIds().size() > 0) {
+                     if (s.getIds() != null && !s.getIds().isEmpty() || s.getValue().equals("READ")||s.getValue().equals("WRITE")) {
                          s.accept(this);
                      }
                  }
@@ -397,9 +426,17 @@ public class ScopeVisitor implements Visitor{
             father = procedure.getTable();
             procedure.getBody().accept(this);
         }
-        FieldType t = new FieldType();
+
+        FieldType.TypeFunction t = new FieldType.TypeFunction();
+        if (procedure.getProcParams()!=null) {
+        for (ProcParams p : procedure.getProcParams()) {
+            t.addInputParam(p.getType().getType());
+            if (p.getId().getValue()!= null) {
+                t.addOutputParam(p.getId().getValue());
+            }
+        }}
         father = symbolTable.getFather();
-        return new Row(procedure.getId().getId(),Procedure.class,t,"");
+        return new Row(procedure.getId().getId(),procedure,t,"");
     }
 
     @Override

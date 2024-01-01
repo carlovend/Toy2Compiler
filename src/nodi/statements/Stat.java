@@ -17,7 +17,7 @@ public class Stat extends DefaultMutableTreeNode implements Visitable {
     private ArrayList<ExprOp>exprs;
     private ProcCallOp procCallOp;
     private IoArgs ioArgs;
-    String value;
+    private String value;
     public Stat(ArrayList<Identifier> ids, ArrayList<ExprOp>exprs) {
         super("Assign");
         for (Identifier i:ids) {

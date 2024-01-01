@@ -1,8 +1,10 @@
 package nodi.expr;
 
+import nodi.statements.Stat;
+
 import javax.swing.tree.DefaultMutableTreeNode;
 
-public class IoArgs extends DefaultMutableTreeNode {
+public class IoArgs extends Stat {
 
     private ExprOp exprOp;
     private IoArgs ioArgs;

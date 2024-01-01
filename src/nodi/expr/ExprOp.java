@@ -9,9 +9,28 @@ public class ExprOp extends DefaultMutableTreeNode implements Visitable {
 
     private String mode;
     private String type;
+    boolean isId = false;
     public ExprOp(String expr) {
         super(expr);
     }
+    private boolean dollar = false;
+
+
+    public void setIsId() {
+        this.isId = true;
+    }
+    public void setDollar() {
+        this.dollar = true;
+    }
+
+    public boolean isDollar() {
+        return this.dollar;
+    }
+    public boolean isId() {
+        return isId;
+    }
+
+
 
     public String getMode() {
         return mode;
