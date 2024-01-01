@@ -67,7 +67,7 @@ public class ScopeVisitor implements Visitor{
 
     @Override
     public Object visit(FunCallOp funCallOp) throws Exception {
-        if (!funCallOp.getExprsList().isEmpty()) {
+        if (funCallOp.getExprsList()!=null) {
             for (ExprOp e : funCallOp.getExprsList()) {
                 e.accept(this);
             }
@@ -82,19 +82,17 @@ public class ScopeVisitor implements Visitor{
         if (father.lookUp(identifier.getId())!=null) {
             //TODO FARE Exception
             return true;
-
-
         }else {
             father = father.getFather();}
-
         }
-
-    father = tmp;
+        father = tmp;
         throw new Exception("Nessuna dichiarazione");
     }
 
     @Override
     public Object visit(IoArgs ioArgs) {
+
+        //TODO SE è WRITE O READ CONTROLLARE SE FARIABILE GIà DICHIARATA
         return null;
     }
 
@@ -173,7 +171,7 @@ public class ScopeVisitor implements Visitor{
         if (ifOp.getElseBody() != null) {
 
             father = ifOp.getElseTable();
-            ifOp.getElseBody().getBody().accept(this);
+            ifOp.getElseBody().accept(this);
         }
         father = ifOp.getTable().getFather();
         return null;
@@ -330,9 +328,15 @@ public class ScopeVisitor implements Visitor{
             father = function.getTable();
             function.getBody().accept(this);
         }
-        FieldType t = new FieldType();
+        FieldType.TypeFunction t = new FieldType.TypeFunction();
+        for (FuncParams f : function.getFunc()) {
+            t.addInputParam(f.getId().getId());
+        }
+        for (Type type: function.getTypes()) {
+            t.addOutputParam(type.getType());
+        }
         father = symbolTable.getFather();
-        return new Row(function.getId().getId(),Function.class,t,"");
+        return new Row(function.getId().getId(),function,t,"");
     }
 
     int c =0;

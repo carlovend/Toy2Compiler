@@ -17,6 +17,7 @@ public class Stat extends DefaultMutableTreeNode implements Visitable {
     private ArrayList<ExprOp>exprs;
     private ProcCallOp procCallOp;
     private IoArgs ioArgs;
+    String value;
     public Stat(ArrayList<Identifier> ids, ArrayList<ExprOp>exprs) {
         super("Assign");
         for (Identifier i:ids) {
@@ -43,6 +44,7 @@ public class Stat extends DefaultMutableTreeNode implements Visitable {
         for (ExprOp e: exprs) {
             super.add(e);
         }
+        this.value = value;
     }
 
     public Stat(String value,IoArgs ioArgs) {
@@ -50,6 +52,7 @@ public class Stat extends DefaultMutableTreeNode implements Visitable {
         if (ioArgs!= null) {
             super.add(ioArgs);}
         this.ioArgs = ioArgs;
+        this.value = value;
     }
 
     @Override
@@ -67,6 +70,10 @@ public class Stat extends DefaultMutableTreeNode implements Visitable {
         super("Stat");
         super.add(whileOp);
         this.whileOp = whileOp;
+    }
+
+    public String getValue() {
+        return value;
     }
 
     public Stat(String node) {
