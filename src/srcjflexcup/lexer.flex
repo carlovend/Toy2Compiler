@@ -38,7 +38,7 @@ StringConst = \"([^\"\\]|\\.)*\"
 StringError = " [^"]
 CommentError = "%" [^"%"]
 Error = [^]
-Id = [A-Za-z][A-Za-z0-9]*
+Id = [A-Za-z_][A-Za-z0-9_]*
 %{
     private Symbol symbol(int type) {
         return new Symbol(type, yyline, yycolumn);

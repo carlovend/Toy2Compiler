@@ -38,6 +38,7 @@ public class TypeVisitor implements Visitor {
             {"integer", "real", "boolean"},
             {"real", "integer", "boolean"},
             {"string","string","boolean"},
+            {"boolean","boolean","boolean"},
             };
 
     private static final String[][] combinazioniMinus= { {"integer", "integer"},
@@ -55,6 +56,18 @@ public class TypeVisitor implements Visitor {
     @Override
     public Object visit(BinaryOP binaryOP) throws Exception {
         String type1 = (String) binaryOP.getExpr1().accept(this);
+        if (type1.contains("integer")) {
+            type1 = "integer";
+        }
+        else if (type1.contains("string")) {
+            type1 = "string";
+        }
+        else if (type1.contains("real")) {
+            type1 = "real";
+        }else {
+
+        }
+
         String type2 = (String) binaryOP.getExpr2().accept(this);
 
         String opType = binaryOP.getType();
@@ -94,7 +107,7 @@ public class TypeVisitor implements Visitor {
     @Override
     public Object visit(ConstOp constOp) {
         String type = constOp.getType();
-        if (type.equals("boolean_const")) {
+        if (type.equals("boolean")) {
             constOp.setType("boolean");
             return "boolean";
         }
@@ -143,6 +156,7 @@ public class TypeVisitor implements Visitor {
     public Object visit(FunCallOp funCallOp) throws Exception {
         ArrayList<String> typeExpr = new ArrayList<>();
         Row result = currentScope.lookUp(funCallOp.getId().getId());
+        System.out.println("SONO NELLA FUNZIONE"+funCallOp.getId().getId());
         if (result == null) {
             throw new Exception("La funzione non esiste");
         }else {
@@ -162,7 +176,7 @@ public class TypeVisitor implements Visitor {
                         typeExpr.add(type);
                     }
                     //VERIFICHIAMO CHE I TIPI COINCIDANO
-                    ArrayList<String> tipiDellaChiama = ((FieldType.TypeFunction) result.getType()).getOutputParams();
+                    ArrayList<String> tipiDellaChiama = ((FieldType.TypeFunction) result.getType()).getInputParams();
                     Iterator<String> iter1 = Arrays.asList(String.valueOf(tipiDellaChiama)).iterator();
                     Iterator<String> iter2 = Arrays.asList(String.valueOf(typeExpr)).iterator();
 
@@ -330,48 +344,68 @@ public class TypeVisitor implements Visitor {
 
     @Override
     public Object visit(ElifOp elifOp) throws Exception {
+        SymbolTable tmp = currentScope;
         String condizione = (String) elifOp.getExprOp().accept(this);
 
         currentScope = elifOp.getElifTable();
         elifOp.getBodyOp().accept(this);
-        currentScope = elifOp.getElifTable().getFather();
+        currentScope = tmp;
 
         return null;
     }
 
     @Override
     public Object visit(IfOp ifOp) throws Exception {
-
+        SymbolTable tmp = currentScope;
         String condizione = (String) ifOp.getExprOpStat().accept(this);
-
         currentScope = ifOp.getTable();
+        System.out.println(currentScope +"HO APPENA SETTATO CURRENT DI IF");
         ifOp.getBodyOpIf().accept(this);
-        currentScope = ifOp.getTable().getFather();
 
-        if (ifOp.getElseBody() != null) {
-            currentScope = ifOp.getElseTable();
-            ifOp.getElseBody().accept(this);
-            currentScope = ifOp.getTable().getFather();
+
+        if (ifOp.getElifOps()!=null) {
+            for (ElifOp e : ifOp.getElifOps()) {
+                e.accept(this);
+            }
         }
 
+        if (ifOp.getElseBody().getBody() != null) {
+
+            currentScope = ifOp.getElseTable();
+            System.out.println("SONO NELL ELSE E VEDO LO SCOPE"+currentScope.getScope());
+            ifOp.getElseBody().getBody().accept(this);
+            for (Stat s : ifOp.getElseBody().getBody().getStats()) {
+                if (s.getValue()!=null&&s.getValue().equals("RETURN")) {
+                    isReturnPresente = true;
+                }
+
+            }
+        }
+        currentScope = tmp;
         return null;
     }
 
     @Override
     public Object visit(Stat stat) throws Exception {
-
+            System.out.println("SONO NEL FOTTUTO STAT"+stat.getValue());
             if (stat.getValue()!=null) {
             if (stat.getValue().equals("RETURN")) {
                 if (stat.getExprs()!=null) {
                     return stat.getExprs();
                 }
                 return null;
-            }}
+            }else {
+            return null;
+            }
+            }
+
+
 
         if (!(stat instanceof WhileOp) && !(stat instanceof IfOp) && !(stat instanceof ElifOp) && !(stat instanceof ProcCallOp)) {
 
             if (!stat.getExprs().isEmpty()) {
                 if (stat.getExprs().get(0) instanceof FunCallOp) {
+
                     Row r = currentScope.lookUp(((FunCallOp) stat.getExprs().get(0)).getId().getId()) ;
                     System.out.println(r.getNode());
                     Function f = null;
@@ -472,17 +506,10 @@ public class TypeVisitor implements Visitor {
     @Override
     public Object visit(BodyOp bodyOp) throws Exception {
         ArrayList<ExprOp> exprOp = new ArrayList<>();
+
         if (bodyOp.getStats() != null) {
             for (Stat s : bodyOp.getStats()) {
-                if (s.getValue()!=null) {
-                if (s.getValue().equals("RETURN")){
-               exprOp = (ArrayList<ExprOp>) s.accept(this);
-                }
-
-            }
-                else {
-                    s.accept(this);
-                }
+                s.accept(this);
             }
         }
         if (!exprOp.isEmpty()) {

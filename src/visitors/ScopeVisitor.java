@@ -133,15 +133,15 @@ public class ScopeVisitor implements Visitor{
         unaryOp.getExprOp().accept(this);
         return null;
     }
-    int i = 0;
+
     @Override
     public Object visit(ElifOp elifOp) throws Exception {
-        i++;
+
         elifOp.setElifTable(new SymbolTable());
         SymbolTable table = elifOp.getElifTable();
         table.setScope(elifOp.toString());
         table.setFather(father);
-
+        System.out.println(father.getScope()+"SONO PADRE DI ELIF");
         if (elifOp.getBodyOp() != null) {
             father = elifOp.getElifTable();
             elifOp.getBodyOp().accept(this);
@@ -152,7 +152,8 @@ public class ScopeVisitor implements Visitor{
 
     @Override
     public Object visit(IfOp ifOp) throws Exception {
-
+        SymbolTable tmp = father;
+        System.out.println(father.getScope()+"CERCOPADRE");
         ifOp.setTable(new SymbolTable());
         SymbolTable table = ifOp.getTable();
         table.setScope("If-Then");
@@ -160,7 +161,7 @@ public class ScopeVisitor implements Visitor{
         ifOp.setElseTable(new SymbolTable());
         SymbolTable elseTable = ifOp.getElseTable();
         elseTable.setScope("Else-Then");
-        elseTable.setFather(father);
+        elseTable.setFather(ifOp.getTable());
 
         if (ifOp.getBodyOpIf() != null) {
             father = ifOp.getTable();
@@ -168,18 +169,18 @@ public class ScopeVisitor implements Visitor{
         }
 
         if (ifOp.getElifOps() != null) {
-
             for (ElifOp e: ifOp.getElifOps()) {
                 e.accept(this);
             }
         }
 
-        if (ifOp.getElseBody() != null) {
-
+        if (ifOp.getElseBody().getBody() != null) {
             father = ifOp.getElseTable();
-            ifOp.getElseBody().accept(this);
+            System.out.println(elseTable.getFather()+"SONO ELSE E STAMPO PADRE");
+            ifOp.getElseBody().getBody().accept(this);
+            father = ifOp.getElseTable().getFather();
         }
-        father = ifOp.getTable().getFather();
+
         return null;
     }
 
@@ -280,7 +281,6 @@ public class ScopeVisitor implements Visitor{
                      s.accept(this);
                  }
                  if (s instanceof IfOp) {
-
                      s.accept(this);
                  }
                  if (s instanceof ElifOp) {
@@ -359,7 +359,7 @@ public class ScopeVisitor implements Visitor{
         }
         FieldType.TypeFunction t = new FieldType.TypeFunction();
         for (FuncParams f : function.getFunc()) {
-            t.addInputParam(f.getId().getId());
+            t.addInputParam(f.getType().getType());
         }
         for (Type type: function.getTypes()) {
             t.addOutputParam(type.getType());

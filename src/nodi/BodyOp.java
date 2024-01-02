@@ -39,6 +39,12 @@ public class BodyOp extends DefaultMutableTreeNode implements Visitable {
         super(elseOp);
         super.add(body);
         this.body = body;
+        this.elseOp = elseOp;
+    }
+    private String elseOp;
+
+    public String getElseOp() {
+        return elseOp;
     }
 
     public BodyOp() {

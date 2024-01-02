@@ -9,6 +9,7 @@ import parser_lexer.parser;
 import parser_lexer.sym;
 import tables.Row;
 import tables.SymbolTable;
+import visitors.CodeGenerator;
 import visitors.ScopeVisitor;
 import visitors.TypeVisitor;
 
@@ -58,6 +59,7 @@ public class App {
         FileInputStream stream = new java.io.FileInputStream(args[0]);
         Reader reader = new java.io.InputStreamReader(stream, "UTF-8");
         Lexer scanner = new Lexer(reader);
+        File prova = new File("src/main/java/org/example/speriamo.c");
 
         parser p = new parser(scanner);
 
@@ -91,6 +93,9 @@ public class App {
         //tree=new JTree(root);
         ((Program) root).accept(new ScopeVisitor());
         ((Program) root).accept(new TypeVisitor());
+        CodeGenerator.FILE_NAME="speriamo.c";
+        ((Program) root).accept(new CodeGenerator());
+
         int a;
     }
 

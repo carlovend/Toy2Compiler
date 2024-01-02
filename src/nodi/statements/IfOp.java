@@ -79,7 +79,7 @@ public class IfOp extends  Stat implements Visitable {
     }
 
     public SymbolTable getElseTable() {
-        return elseTable;
+        return this.elseTable;
     }
 
     public void setElseTable(SymbolTable elseTable) {
