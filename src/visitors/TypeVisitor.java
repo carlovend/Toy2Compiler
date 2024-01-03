@@ -69,7 +69,17 @@ public class TypeVisitor implements Visitor {
         }
 
         String type2 = (String) binaryOP.getExpr2().accept(this);
+        if (type2.contains("integer")) {
+            type2 = "integer";
+        }
+        else if (type2.contains("string")) {
+            type2 = "string";
+        }
+        else if (type2.contains("real")) {
+            type2 = "real";
+        }else {
 
+        }
         String opType = binaryOP.getType();
         if (opType.equals("plusOp")||opType.equals("minusOp")||opType.equals("timesOp")||opType.equals("divOp")) {
             for (String[] c: combinazioniAritOp) {
@@ -77,8 +87,13 @@ public class TypeVisitor implements Visitor {
                     binaryOP.setType(c[2]);
                     return c[2];
                 }
+                for (String[] d : combinazioniStrOp) {
+                    if (type1.equals(d[0])&&type2.equals(d[1])) {
+                        binaryOP.setType(d[2]);
+                        return d[2];
+                }}
             }
-            return new Exception("errore nella binary");
+            throw new Exception("errore nella binary");
         }
 
         if (opType.equals("andOp")||opType.equals("orOp")) {
@@ -156,50 +171,69 @@ public class TypeVisitor implements Visitor {
     public Object visit(FunCallOp funCallOp) throws Exception {
         ArrayList<String> typeExpr = new ArrayList<>();
         Row result = currentScope.lookUp(funCallOp.getId().getId());
-        System.out.println("SONO NELLA FUNZIONE"+funCallOp.getId().getId());
+        ArrayList<String> stringOfReturnType = new ArrayList<>();
+        int nParametriDellaChiamata = 0;
+        FieldType.TypeFunction n = (FieldType.TypeFunction) functionTypes(funCallOp.getId());
+        int nParamDellaRow = n.getInputParams().size();
         if (result == null) {
             throw new Exception("La funzione non esiste");
         }else {
-            FieldType.TypeFunction dec = (FieldType.TypeFunction) result.getType();
-            ArrayList<String> inParam = dec.getInputParams();
-            int nParametri = inParam.size();
-            int nParamChiam = 0;
-            if (funCallOp.getExprsList() != null) {
-                nParamChiam = funCallOp.getExprsList().size();
-
-                if (nParametri != nParamChiam) {
-                    throw new Exception("Il numero di parametri non coincide");
-                }else {
-
-                    for (ExprOp e: funCallOp.getExprsList()) {
-                        String type = (String) e.accept(this);
-                        typeExpr.add(type);
-                    }
-                    //VERIFICHIAMO CHE I TIPI COINCIDANO
-                    ArrayList<String> tipiDellaChiama = ((FieldType.TypeFunction) result.getType()).getInputParams();
-                    Iterator<String> iter1 = Arrays.asList(String.valueOf(tipiDellaChiama)).iterator();
-                    Iterator<String> iter2 = Arrays.asList(String.valueOf(typeExpr)).iterator();
-
-                    while (iter1.hasNext() && iter2.hasNext()) {
-                        String type = iter1.next();
-                        String typeOfId = iter2.next();
-                        System.out.println(type+typeOfId);
-                        if (!type.equals(typeOfId)) {
-                            throw new Exception("Tipi non validi");
+            if (funCallOp.getExprsList()!=null) {
+                for (ExprOp e: funCallOp.getExprsList()) {
+                    if (e instanceof FunCallOp) {
+                        //ci assicuriamo che abbia un solo tipo di ritorno
+                        FieldType.TypeFunction returnType = (FieldType.TypeFunction) functionTypes(((FunCallOp) e).getId());
+                        stringOfReturnType.addAll(returnType.getOutputParams());
+                        if (stringOfReturnType.size()>1) {
+                            throw new Exception("LA CHIAMATA A FUNZIONE RESTITUISCE PIU DI UN PARAMETROO");
                         }
-                    }
+                        nParametriDellaChiamata = nParametriDellaChiamata+1;
+                    }else {
+                    nParametriDellaChiamata = nParametriDellaChiamata+1;
+                }}
+            }
+
+            if (nParamDellaRow!=nParametriDellaChiamata) {
+                throw new Exception("I PARAMETRI DELLA FUNZIONE E DELLA CHIAMATA NON COINCIDONO");
+            }
+            for (ExprOp e: funCallOp.getExprsList()) {
+                if (e instanceof FunCallOp) {continue;}
+                String type = (String) e.accept(this);
+                typeExpr.add(type);
+            }
+
+            //verifichiamo se i tipi coincidono
+            ArrayList<String> tipiDellaFirma = ((FieldType.TypeFunction)result.getType()).getInputParams();
+            Iterator<String> iter1 = tipiDellaFirma.iterator();
+            Iterator<String> iter2 = typeExpr.iterator();
+
+            while (iter1.hasNext() && iter2.hasNext()) {
+                String type = iter1.next();
+                String typeOfId = iter2.next();
+
+                if (typeOfId.equals("integer_const")){
+                    typeOfId = "integer";
+
+                }
+                if (typeOfId.equals("string_const")) {
+                    typeOfId = "string";
+
+                }
+                if (!type.equals(typeOfId)) {
+                    throw new Exception("TIPI DELLA CHIAMATA A FUNZONE E TIPI DELLA FIRMA NON COINCIDONO");
                 }
             }
+
+
         }
 
-
-        return typeExpr;
+        return typeExpr.get(0);
     }
 
     @Override
     public Object visit(Identifier identifier) throws Exception {
         Row res = currentScope.lookUp(identifier.getId());
-        System.out.println(identifier.getId());
+
        /* if (res == null) {
             throw new Exception("Nessuna dichiarazione");
         }else {
@@ -224,7 +258,7 @@ public class TypeVisitor implements Visitor {
         }
 
         currentScope = tmp;
-        System.out.println("PRIMA DI ECCEZZIONE"+identifier.getId());
+
     throw new Exception("Nessuna dichiarazione");
     }
 
@@ -240,72 +274,89 @@ public class TypeVisitor implements Visitor {
 
     @Override
     public Object visit(ProcCallOp procCallOp) throws Exception {
-        ArrayList<String> typeExpr = new ArrayList<>();
+        //controllare se i parametri ceh diamo alla procedura coincidono con quelli che sono della procedura
+        //se è una chiamata di funzioen la funzione puo restituire solo un paramrtro
+        //controllare i ref e gli out
         Row r = currentScope.lookUp(procCallOp.getId().getId());
-        FieldType.TypeFunction dec = (FieldType.TypeFunction) r.getType();
-        ArrayList<String> inputParams= dec.getInputParams();
-        ArrayList<String> parametriConOut = ((FieldType.TypeFunction) r.getType()).getOutputParams();
-        int nParametriConOut = parametriConOut.size();
-        int nParametri = inputParams.size();
-        int nProcParams = 0;
         if (r == null) {
             throw new Exception("LA PROCEDURA NON ESISTE");
-        }else {
-            if (procCallOp.getExprsList()!=null) {
-                for (ExprOp e: procCallOp.getExprsList()) {
-                    if (e instanceof FunCallOp) {
-                        System.out.println("CURRENTSCOPE NEL PROCCALL");
-                         typeExpr = (ArrayList<String>) e.accept(this);
-                    }else {
-                        String t = (String) e.accept(this);
-                        typeExpr.add(t);
-                    }
-                }
-
-                nProcParams = nProcParams +typeExpr.size();
-                if (nParametri!=nProcParams) {
-                    System.out.println(nProcParams+"SUCAMI"+nParametri+"SUCAMI2"+typeExpr.size());
-
-                    throw new Exception("I PARAMETRI DELLA CHIAMATA DELLA PORC NON COINCIDONO");
-                }
-                ArrayList<String> tipiDellaChiamata = ((FieldType.TypeFunction) r.getType()).getInputParams();
-                Iterator<String> iter1 = Arrays.asList(String.valueOf(tipiDellaChiamata)).iterator();
-                 Iterator<String> iter2 = Arrays.asList(String.valueOf(typeExpr)).iterator();
-                while (iter1.hasNext() && iter2.hasNext()) {
-                    String type = iter1.next();
-                    String typeOfId = iter2.next();
-                    System.out.println(type+typeOfId);
-                    if (!type.equals(typeOfId)) {
-                        throw new Exception("Tipi non validi nella procedura");
-                    }
-            }
-                ArrayList<String> refValue = new ArrayList<>();
-                List<String> list1 = ((FieldType.TypeFunction) r.getType()).getOutputParams();
-            if (procCallOp.getExprsList()!=null) {
+        }
+        FieldType.TypeFunction t = (FieldType.TypeFunction) functionTypes(procCallOp.getId());
+        int paramFromRow = t.getInputParams().size();
+        ArrayList<String> typeOfParam = new ArrayList<>();
+        int nParams = 0;
+        ArrayList<String> outONormal = new ArrayList<>();
+        ArrayList<String> stringOfReturnType = new ArrayList<>();
+        if (procCallOp.getExprsList()!=null) {
             for (ExprOp e : procCallOp.getExprsList()) {
+                if (e instanceof FunCallOp) {
+                    //ci assicuriamo che abbia un solo tipo di ritorno
+                    FieldType.TypeFunction returnType = (FieldType.TypeFunction) functionTypes(((FunCallOp) e).getId());
+                    stringOfReturnType.addAll(returnType.getOutputParams());
+                    if (stringOfReturnType.size()>1) {
+                        throw new Exception("LA CHIAMATA A FUNZIONE RESTITUISCE PIU DI UN PARAMETROO");
+                    }
+                    nParams = nParams+1;
+                    outONormal.add("NORMAL");
+                }else {
+
+                String p = (String) e.accept(this);
                 if (e instanceof Identifier) {
-                    refValue.add(((Identifier) e).getValue());
+                    outONormal.add(((Identifier) e).getValue());
+
+                    nParams = nParams+1;
+                    continue;
                 }
-            }}
-                List<String> list2 = (refValue);
-            if (list1.size()!=list2.size()) {
-                throw new Exception("ERRORE NEI REF E NEGLI OUT");
+                if (p.equals("integer_const")){
+                    p = "integer";
+                    outONormal.add("NORMAL");
+                }
+                if (p.equals("string_const")) {
+                    p = "string";
+                    outONormal.add("NORMAL");
+                }if (p.equals("real_const")) {
+                        p = "real";
+                        outONormal.add("NORMAL");
+                    }
+                typeOfParam.add(p);
+                nParams = 1+nParams;
+                }
             }
-                for (int i = 0; i < list1.size() && i < list2.size(); i++) {
-                    String type = list1.get(i);
-                    String typeOfId = list2.get(i);
-                    System.out.println(type + typeOfId + " CONTROLLO I REF");
-                    if ((type.equals("NORMAL") && typeOfId.equals("REF")) || (type.equals("OUT") && !typeOfId.equals("REF"))) {
-                        throw new Exception("Tipi non validi per i ref e per gli out");
+
+            if (paramFromRow!=nParams) {
+                throw new Exception("IL NUMERO DI PARAMETRI NON COINCIDE");
+            }else {
+                //se il numero di parametri della chiamata e della firma coincidono ci assicuriamo che sono dello stesso tipo
+                //dello stesso tipo e anche che i ref e gli out sono al posto giusto
+                Iterator<String> iter1 = typeOfParam.iterator();
+                Iterator<String> iter2 = stringOfReturnType.iterator();
+
+                while (iter1.hasNext()&& iter2.hasNext()) {
+                    String tipo1 = iter1.next();
+                    String tipo2 = iter2.next();
+                    if (!tipo1.equals(tipo2)) {
+                        throw new Exception("I TIPI PASSATI ALLA PROCEDURA NON COINCIDONO CON LA FIRMA");
+                    }
+
+                }
+
+                FieldType.TypeFunction typeParamFromRow = (FieldType.TypeFunction) functionTypes(procCallOp.getId());
+                ArrayList<String> typeParam = new ArrayList<>();
+                typeParam.addAll(typeParamFromRow.getOutputParams());
+                iter1 = outONormal.iterator();
+                iter2 = typeParam.iterator();
+
+                while(iter1.hasNext()&&iter2.hasNext()) {
+                    String tipo1 = iter1.next();
+                    String tipo2 = iter2.next();
+
+                    if (tipo1.equals("NORMAL")&&tipo2.equals("OUT")||tipo1.equals("REF")&&!tipo2.equals("OUT")) {
+                        throw new Exception("GLI OUT NON COINCIDONO CON I REF");
                     }
                 }
             }
         }
 
-        if (nProcParams!=nParametri) {
-            System.out.println(nProcParams+nParametri+"PORCODIOOOOOOOOOOOOOOOOOOOOOO");
-            throw new Exception("I PARAMETRI DELLA CHIAMATA DELLA PORC NON COINCIDONO");
-        }
         return null;
     }
 
@@ -359,7 +410,7 @@ public class TypeVisitor implements Visitor {
         SymbolTable tmp = currentScope;
         String condizione = (String) ifOp.getExprOpStat().accept(this);
         currentScope = ifOp.getTable();
-        System.out.println(currentScope +"HO APPENA SETTATO CURRENT DI IF");
+
         ifOp.getBodyOpIf().accept(this);
 
 
@@ -372,7 +423,7 @@ public class TypeVisitor implements Visitor {
         if (ifOp.getElseBody().getBody() != null) {
 
             currentScope = ifOp.getElseTable();
-            System.out.println("SONO NELL ELSE E VEDO LO SCOPE"+currentScope.getScope());
+
             ifOp.getElseBody().getBody().accept(this);
             for (Stat s : ifOp.getElseBody().getBody().getStats()) {
                 if (s.getValue()!=null&&s.getValue().equals("RETURN")) {
@@ -387,7 +438,7 @@ public class TypeVisitor implements Visitor {
 
     @Override
     public Object visit(Stat stat) throws Exception {
-            System.out.println("SONO NEL FOTTUTO STAT"+stat.getValue());
+
             if (stat.getValue()!=null) {
             if (stat.getValue().equals("RETURN")) {
                 if (stat.getExprs()!=null) {
@@ -402,73 +453,59 @@ public class TypeVisitor implements Visitor {
 
 
         if (!(stat instanceof WhileOp) && !(stat instanceof IfOp) && !(stat instanceof ElifOp) && !(stat instanceof ProcCallOp)) {
+            ArrayList<String> valueOfExprs = new ArrayList<>();
+            if (stat.getExprs() != null) {
+                for (ExprOp e : stat.getExprs()) {
+                    if (e instanceof FunCallOp) {
+                       String value = (String) e.accept(this);
 
-            if (!stat.getExprs().isEmpty()) {
-                if (stat.getExprs().get(0) instanceof FunCallOp) {
-
-                    Row r = currentScope.lookUp(((FunCallOp) stat.getExprs().get(0)).getId().getId()) ;
-                    System.out.println(r.getNode());
-                    Function f = null;
-                    if (r.getNode() instanceof Function) {
-                        f = (Function) r.getNode();
-                    }else {
-                        throw new Exception("Non è una function");
-                    }
-                    System.out.println("sono una function");
-                    ArrayList<String>  returnType = (ArrayList<String>) f.accept(this);
-                    Iterator<String> iter1 = Arrays.asList(String.valueOf(returnType)).iterator();
-                    ArrayList<String> ids = new ArrayList<>();
-                    for (Identifier i: stat.getIds()) {
-                        String a = (String) i.accept(this);
-                        ids.add(a);
-                    }
-                    Iterator<String> iter2 = Arrays.asList(String.valueOf(ids)).iterator();
-                    while (iter1.hasNext() && iter2.hasNext()) {
-                        String type = iter1.next();
-                        String typeOfId = iter2.next();
-                        System.out.println(type+typeOfId);
-                        if (!type.equals(typeOfId)) {
-                            throw new Exception("Tipi non validi");
+                        valueOfExprs.add(value);
+                        FieldType.TypeFunction t = (FieldType.TypeFunction) functionTypes(((FunCallOp) e).getId());
+                        ArrayList<String> tipiDiRitorno = t.getOutputParams();
+                        if (tipiDiRitorno.size()>1) {
+                            throw new Exception("LA FUNZIONE RESTITUISCE PIU DI UN VALORE");
                         }
+                        continue;
                     }
+                   Object valeu = e.accept(this);
+                    if (valeu instanceof String) {
+                    valueOfExprs.add((String) valeu);}
                 }
-                else {
-                    ArrayList<String> ids1 = new ArrayList<>();
-                    if (stat.getIds()!=null) {
-                    for (Identifier i : stat.getIds()) {
-                        String a  = (String) i.accept(this);
-                        ids1.add(a);
-                    }}
-                    ArrayList<String> ids2 = new ArrayList<>();
-                    for (ExprOp e: stat.getExprs()) {
-                        String type = (String) e.accept(this);
-                        ids2.add(type);
+                ArrayList<String> valueOfIds = new ArrayList<>();
+                for (Identifier i: stat.getIds()) {
+
+                    String v = (String) i.accept(this);
+                    valueOfIds.add(v);
+                }
+                Iterator<String> iter1 = valueOfIds.iterator();
+                Iterator<String> iter2 = valueOfExprs.iterator();
+
+                if (valueOfIds.size()!=valueOfExprs.size()) {
+                    throw new Exception("ERRORE NELL ASSIGN CI NUMERO DI PARAMETRI SBAGLIATI");
+                }
+                while (iter1.hasNext() && iter2.hasNext()) {
+                    String t1 = iter1.next();
+                    String t2 = iter2.next();
+
+                    if (t1.equals("integer_const")||t2.equals("integer_const")){
+                        t1 = "integer";
+                        t2 = "integer";
                     }
-                    Iterator<String> iter1 = Arrays.asList(String.valueOf(ids1)).iterator();
-                    Iterator<String> iter2 = Arrays.asList(String.valueOf(ids2)).iterator();
-                    while (iter1.hasNext() && iter2.hasNext()) {
-                        String type = iter1.next();
-                        String typeOfId = iter2.next();
-                        System.out.println(type+typeOfId);
-                        if (!typeOfId.contains(type.substring(1,6))) {
-                            throw new Exception("Tipi non validi");
-                        }
+                    if (t1.equals("string_const")||t2.equals("string_const")) {
+                        t1 = "string";
+                        t2 = "string";
+                    }
+                    if (t1.equals("real_const")||t2.equals("real_const")) {
+                        t1 = "real";
+                        t2 = "real";
                     }
 
-                }
-            }
-            if (stat.getIds() != null){
-            for (Identifier i: stat.getIds()) {
-                i.accept(this);
-            }}
-            if (!stat.getExprs().isEmpty()) {
-                if (stat.getExprs().get(0) instanceof FunCallOp) {
-                    stat.getExprs().get(0).accept(this);
+                    if (!t1.equals(t2)) {
+                        throw new Exception("ERRORE NEI TIPI DELLA ASSIGN");
+                    }
                 }
             }
         }
-
-
         if (stat instanceof WhileOp) {
             stat.accept(this);
         }
@@ -509,11 +546,12 @@ public class TypeVisitor implements Visitor {
 
         if (bodyOp.getStats() != null) {
             for (Stat s : bodyOp.getStats()) {
-                s.accept(this);
+               exprOp = (ArrayList<ExprOp>) s.accept(this);
             }
         }
-        if (!exprOp.isEmpty()) {
-            return exprOp;
+        if (exprOp!=null) {
+            if (!exprOp.isEmpty())
+                return exprOp;
         }
         return null;
     }
@@ -561,7 +599,7 @@ public class TypeVisitor implements Visitor {
         }
         SymbolTable tmp = currentScope;
         currentScope = function.getTable();
-        System.out.println("sono nella funzione"+currentScope.getScope());
+
         ArrayList<ExprOp> exprs = new ArrayList<>();
         if (function.getBody()!= null) {
           exprs = (ArrayList<ExprOp>) function.getBody().accept(this);
@@ -592,15 +630,15 @@ public class TypeVisitor implements Visitor {
             while (iter1.hasNext()&&iter2.hasNext()) {
                 String t1 = iter1.next();
                 String t2 = iter2.next();
-                System.out.println(t1+t2);
+
                 if (!t1.equals(t2)) {
                     throw new Exception("Tipi non validi");
                 }
             }
         }
-        System.out.println("sono nella funzione prima di riassegnare"+currentScope.getScope());
+
         currentScope = tmp;
-        System.out.println("sono nella funzione doppo aver riassegnato"+currentScope.getScope());
+
 
         if (!isReturnPresente) {
             throw new Exception("RETURN NON PRESENTE");
@@ -615,7 +653,7 @@ public class TypeVisitor implements Visitor {
         if (iter.getDecls() != null) {
             ArrayList<Row> varList= new ArrayList<>();
             for (Decls d : iter.getDecls()) {
-                System.out.println(iter.getDecls().size());
+
                 varList = (ArrayList<Row>) d.accept(this);
 
             }
@@ -650,6 +688,29 @@ public class TypeVisitor implements Visitor {
         }
 
         if (procedure.getBody()!=null) {
+            if (procedure.getBody().getStats()!=null) {
+                for (Stat s : procedure.getBody().getStats()) {
+                    if (s.getValue()!=null) {
+                    if (s.getValue().equals("READ")||s.getValue().equals("WRITE")) {
+                        ArrayList<ProcParams> p = procedure.getProcParams();
+                        int i = 0;
+                       if (!p.isEmpty())
+                        for (ExprOp e : s.getExprs()) {
+
+                            if (e instanceof Identifier) {
+                                for (int c = 0; c<p.size();c++) {
+                                    if (((Identifier) e).getId().equals(p.get(c).getId().getId())) {
+                                        ((Identifier) e).setValue(p.get(c).getId().getValue());
+                                    }
+                                }
+                            }}
+                        }
+                    }
+                }
+            }
+        }
+
+        if (procedure.getBody()!=null) {
             procedure.getBody().accept(this);
         }
         currentScope = tmp;
@@ -669,7 +730,7 @@ public class TypeVisitor implements Visitor {
         }
 
         if (program.getIter().size()>0) {
-            System.out.println("PALLEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE");
+
             Row iterList;
             for (Iter i : program.getIter()) {
                 iterList = (Row) i.accept(this);

@@ -105,7 +105,7 @@ public class Stat extends DefaultMutableTreeNode implements Visitable {
     }
 
     public ArrayList<ExprOp> getExprs() {
-        return exprs;
+        return this.exprs;
     }
 
     public void setExprs(ArrayList<ExprOp> exprs) {

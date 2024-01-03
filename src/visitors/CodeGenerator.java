@@ -13,10 +13,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.lang.reflect.Array;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Iterator;
+import java.util.*;
 
 public class CodeGenerator implements Visitor {
 
@@ -80,7 +77,7 @@ public class CodeGenerator implements Visitor {
 
         String expr1 = (String) binaryOP.getExpr1().accept(this);
         String expr2 = (String) binaryOP.getExpr2().accept(this);
-        System.out.println(expr2+"BANANE NEL CULO");
+
         String tipoOperazione = binaryOP.getType();
 
         if (tipoOperazione.equals("plusOp") || tipoOperazione.equals("minusOp") || tipoOperazione.equals("timesOp") || tipoOperazione.equals("divOp")) {
@@ -89,7 +86,7 @@ public class CodeGenerator implements Visitor {
         }
 
         if (tipoOperazione.equals("gtOp") || tipoOperazione.equals("geOp") || tipoOperazione.equals("ltOp") || tipoOperazione.equals("leOp") || tipoOperazione.equals("eqOp") || tipoOperazione.equals("neOp")) {
-            System.out.println(expr1+"DEMONIO IL SIGNORE");
+
             espressione = expr1 + tipoEspressione + expr2;
             return espressione;
         }
@@ -114,7 +111,7 @@ public class CodeGenerator implements Visitor {
         }
 
         if (constOp.getType().equals("string_const")) {
-            constante = "\"" + constOp.getValue() + "\"";
+            constante =  constOp.getValue() ;
         }
         if (constOp.getType().equals("boolean")) {
             constante = constOp.getValue();
@@ -148,8 +145,25 @@ public class CodeGenerator implements Visitor {
 
     @Override
     public Object visit(FunCallOp funCallOp) throws Exception {
-        return null;
+        String functionName = funCallOp.getId().getId();  // Ottieni il nome della funzione
+
+        // Ottieni gli argomenti della funzione
+        List<ExprOp> arguments = funCallOp.getExprsList();
+        List<String> argumentStrings = new ArrayList<>();
+
+        // Genera il codice per ciascun argomento
+        for (ExprOp argument : arguments) {
+            String argumentCode = (String) argument.accept(this);
+            argumentStrings.add(argumentCode);
+        }
+
+        // Genera il codice per la chiamata di funzione
+        String functionCallCode = functionName + "(" + String.join(", ", argumentStrings) + ")";
+
+        // Restituisci il codice generato
+        return functionCallCode;
     }
+
 
     @Override
     public Object visit(Identifier identifier) throws Exception {
@@ -229,11 +243,8 @@ public class CodeGenerator implements Visitor {
     @Override
     public Object visit(IfOp ifOp) throws Exception {
         currentScope = ifOp.getTable();
-        System.out.println(ifOp.getExprOpStat().toString()+"SONO LA CONDIZIONE");
         String condizione = (String) ifOp.getExprOpStat().accept(this);
         writer.write("if("+condizione+") {\n");
-        System.out.println(currentScope.getScope()+"TIPREGOBASTAAAAAAAAAAAAAAAAAAAAAAAA");
-
         if (ifOp.getBodyOpIf()!=null) {
             ifOp.getBodyOpIf().accept(this);
             writer.write("}\n ");
@@ -259,6 +270,114 @@ public class CodeGenerator implements Visitor {
 
     @Override
     public Object visit(Stat stat) throws Exception {
+        StringBuilder builder = new StringBuilder();
+        if (stat.getValue() != null && stat.getValue().equals("WRITE")) {
+            if (stat.getExprs() != null) {
+                // Inizia la costruzione della printf
+                builder.append("printf(");
+
+                for (ExprOp e : stat.getExprs()) {
+                    if (e instanceof Identifier) {
+                        String type = typeVisit((Identifier) e);
+                        if (type.equals("integer")) {
+                            builder.append("\"%d\"");
+                        } else if (type.equals("string")) {
+                            builder.append("\"%s\"");
+                        } else if (type.equals("real")) {
+                            builder.append("\"%f\"");
+                        }
+                    } else if (e instanceof ConstOp) {
+                        // Aggiungi il valore costante direttamente
+                        builder.append(((ConstOp) e).getValue()).append(" ");
+                    } else if (e instanceof BinaryOP) {
+                        // Aggiungi l'espressione binaria valutata
+                        String binaryExpr = (String) e.accept(this);
+                        builder.append("\"%d\"");  // Puoi adattare questa parte in base al tipo dell'espressione binaria
+                    } else {
+                        // Altri casi di espressioni
+                        String toAppend = (String) e.accept(this);
+                        builder.append(toAppend).append(" ");
+                    }
+                }
+
+                // Aggiungi l'operatore di ritorno a capo
+                builder.append("");
+
+                // Aggiungi gli argomenti per la printf
+                for (ExprOp e : stat.getExprs()) {
+                    if (e instanceof Identifier || e instanceof BinaryOP) {
+                        builder.append(", ").append((String) e.accept(this));
+                    }
+                }
+
+                builder.append(");\n");
+            }
+            writer.write(String.valueOf(builder));
+        }
+
+
+        if (stat.getValue() != null && stat.getValue().equals("READ")) {
+            if (stat.getExprs() != null && stat.getExprs().size() > 0) {
+                StringBuilder scanfFormat = new StringBuilder("scanf(\"");
+                StringBuilder scanfArgs = new StringBuilder();
+
+                for (ExprOp expr : stat.getExprs()) {
+                    if (expr instanceof ConstOp) {
+                        String t = (String) expr.accept(this);
+                        writer.write("printf(" + t + ");\n");
+                    } else if (expr instanceof Identifier) {
+                        String type = typeVisit((Identifier) expr);
+                        if (type.equals("integer_const")||type.equals("integer")) {
+                            scanfFormat.append("%d ");
+                        } else if (type.equals("real_const")||type.equals("real")) {
+                            scanfFormat.append("%lf ");
+                            if (((Identifier) expr).getValue().equals("OUT")) {
+                                scanfArgs.append("").append(((Identifier) expr).getId()).append(" ");
+                                continue;}
+                        } else if (type.equals("string_const")||type.equals("string")) {
+                            scanfFormat.append("%s ");
+                            if (((Identifier) expr).getValue().equals("OUT")) {
+                                scanfArgs.append("").append(((Identifier) expr).getId()).append(" ");
+                                continue;}
+                        }
+
+                        // Aggiungi l'argomento per la scanf
+                        scanfArgs.append("&").append(((Identifier) expr).getId()).append(" ");
+                    }
+                }
+
+                // Completa la formattazione della scanf e scrivila nel file
+                scanfFormat.append("\"").append(", ").append(scanfArgs).append(");\n");
+                writer.write(String.valueOf(scanfFormat));
+            }
+        }
+
+
+
+        if (!(stat instanceof WhileOp) && !(stat instanceof IfOp) && !(stat instanceof ElifOp) && !(stat instanceof ProcCallOp)) {
+            ArrayList<String> tipi = new ArrayList<>();
+            ArrayList<String> idString = new ArrayList<>();
+
+            if (stat.getIds() != null && stat.getExprs() != null) {
+
+                for (int i = 0; i < stat.getIds().size(); i++) {
+                    Identifier identifier = stat.getIds().get(i);
+                    ExprOp expression = stat.getExprs().get(i);
+
+                    tipi.add(typeVisit(identifier));
+                    idString.add(identifier.getId());
+                    String d = (String) typeVisit(identifier);
+                    d = convertType(d);
+                    String t = (String) expression.accept(this);
+                    if (expression instanceof FunCallOp) {
+                        t = (String) expression.accept(this);
+                    }
+
+                    // Genera l'assegnamento
+                    writer.write( d  + " " + identifier.getId() + " = " + t+ ";\n");
+                }
+            }
+        }
 
         if (stat instanceof WhileOp) {
             stat.accept(this);
@@ -308,8 +427,12 @@ public class CodeGenerator implements Visitor {
                 ArrayList<Stat> reverse = bodyOp.getStats();
                 Collections.reverse(reverse);
                 for (Stat s : reverse) {
-                    s.accept(this);
-                }
+                    if (s.getValue()!=null) {
+                    if (s.getValue().equals("RETURN")) {
+                        continue;
+                    }
+
+                }s.accept(this);}
             }
 
         return null;
@@ -317,12 +440,12 @@ public class CodeGenerator implements Visitor {
     public String typeVisit(Identifier identifier) throws Exception {
 
         SymbolTable tmp = currentScope;
-        System.out.println(currentScope.getScope()+"TIPREGOBASTA"+identifier.getValue());
+
         while (currentScope != null) {
             if (currentScope.lookUp(identifier.getId()) != null) {
                 Row r = currentScope.lookUp(identifier.getId());
                 String type = r.getType().toString();
-                System.out.println(type+"DIOCANGONOLEPUTRIDO");
+
                 return type;
             } else {
                 currentScope = currentScope.getFather();
@@ -338,7 +461,7 @@ public class CodeGenerator implements Visitor {
         ArrayList<String> idString = new ArrayList<>();
         if (decls.getType() == null) {
             for (Identifier i : decls.getIds()) {
-                System.out.println(i.getValue()+i.getType());
+
                 tipi.add(typeVisit(i));
                 idString.add(i.getId());
             }
@@ -353,7 +476,7 @@ public class CodeGenerator implements Visitor {
                 String id = iter1.next();
                 String t = iter2.next();
                 String c = iter3.next();
-                System.out.println(id+t+c);
+
                 // Ora puoi controllare il tipo e generare il codice C di conseguenza
                 if (t.equals("string_const") || t.equals("integer_const") || t.equals("real_const") || t.equals("boolean")) {
                     // Gestisci il caso in cui il tipo è una stringa
@@ -381,20 +504,107 @@ public class CodeGenerator implements Visitor {
 
     @Override
     public Object visit(FuncParams funcParams) {
-        return null;
+        String paramType = convertType(funcParams.getType().getType());
+        String paramName = funcParams.getId().getId();
+
+        return paramType + " " + paramName;
+
+
     }
+    int i = 0;
+    private void generateStruct(String structName, ArrayList<FuncParams> params) throws IOException {
+        writer.write("struct " + structName + " {\n");
+
+        // Definizione dei campi della struct
+        for (FuncParams param : params) {
+            String fieldType = convertType(param.getType().getType());
+            String fieldName = param.getId().getId();
+            writer.write("    " + fieldType + " " + fieldName + ";\n");
+        }
+
+        writer.write("};\n");
+    }
+
+
 
     @Override
     public Object visit(Function function) throws Exception {
+        currentScope = function.getTable();
+        i++;
+
+        // Restituisci il tipo della struct come tipo di ritorno della funzione
+        writer.write("typedef struct " + function.getId().getId() + "_struct" + " {\n");
+
+        // Gestisci i parametri della struct
+        if (function.getFunc() != null && !function.getFunc().isEmpty()) {
+            ArrayList<String> paramList = new ArrayList<>();
+            int c = 0;
+            for (Type param : function.getTypes()) {
+                c++;
+                String fieldType = convertType(param.getType());
+                String fieldName = "result"+c;
+                writer.write("    " + fieldType + " " + fieldName + ";\n");
+            }
+        }
+
+        writer.write("} " + function.getId().getId() + "_struct;\n");
+
+        // Genera la firma della funzione
+        writer.write(function.getId().getId() + "_struct " + function.getId().getId() + "(");
+
+        // Gestisci i parametri della funzione
+        if (function.getFunc() != null && !function.getFunc().isEmpty()) {
+            ArrayList<String> paramList = new ArrayList<>();
+            for (FuncParams param : function.getFunc()) {
+                String paramInfo = (String) param.accept(this);
+                paramList.add(paramInfo);
+            }
+            writer.write(String.join(", ", paramList));
+        }
+
+        writer.write(") {\n");
+        writer.write("    " + function.getId().getId() + "_struct s" + i + ";\n");
+
+        if (function.getBody() != null) {
+            function.getBody().accept(this);
+        }
+        for (Stat s : function.getBody().getStats()) {
+            if (s.getValue()!=null) {
+            if (s.getValue().equals("RETURN")) {
+                // Ottieni tutte le espressioni di ritorno e parametri della funzione
+                List<ExprOp> returnExprs = s.getExprs();
+                List<Type> returnTypes = function.getTypes();
+
+                // Assumendo che il numero di espressioni di ritorno e tipi sia lo stesso
+                for (int j = 0; j < returnExprs.size(); j++) {
+                    ExprOp returnExpr = returnExprs.get(j);
+                    Type returnType = returnTypes.get(j);
+
+                    String exprString = (String) returnExpr.accept(this);
+                    String fieldName = "result" + (j + 1);  // Aggiungi 1 per iniziare da "result1"
+
+                    writer.write("    s" + i + "." + fieldName + " = " + exprString + ";\n");
+                }
+            }} else {
+                continue;
+            }
+        }
+
+        writer.write("return s"+i +"\n");
+        writer.write("}\n");
+
+        currentScope = function.getTable().getFather();
         return null;
     }
+
+
+
 
     @Override
     public Object visit(Iter iter) throws Exception {
         if (iter.getDecls() != null) {
             ArrayList<Row> varList= new ArrayList<>();
             for (Decls d : iter.getDecls()) {
-                System.out.println(iter.getDecls().size());
                 varList = (ArrayList<Row>) d.accept(this);
 
             }
@@ -413,7 +623,15 @@ public class CodeGenerator implements Visitor {
 
     @Override
     public Object visit(Procedure procedure) throws Exception {
-        writer.write("void " + procedure.getId().getId() + "(");
+        if (!procedure.getId().getId().equals("main")) {
+
+            writer.write("void " + procedure.getId().getId() + "(");
+        }
+
+        currentScope = procedure.getTable();
+        if (procedure.getId().getId().equals("main")) {
+            writer.write("void main(int argc, char *argv[]) {\n");
+        }
 
         if (procedure.getProcParams()!=null) {
             ArrayList<String> parametri = new ArrayList<>();
@@ -424,12 +642,8 @@ public class CodeGenerator implements Visitor {
             writer.write(String.join(", ",parametri));
 
         }
-        writer.write(") {\n");
-        currentScope = procedure.getTable();
-        if (procedure.getId().getId().equals("main")) {
-            writer.write("void main(int argc, char *argv[]) {\n");
-        }
-
+        if (!procedure.getId().getId().equals("main")) {
+        writer.write(") {\n");}
         if (procedure.getBody() != null) {
             procedure.getBody().accept(this);
         }
@@ -446,7 +660,7 @@ public class CodeGenerator implements Visitor {
 
 
         if (program.getIter().size() > 0) {
-            System.out.println("PALLEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE");
+
             Row iterList;
             for (Iter i : program.getIter()) {
                 iterList = (Row) i.accept(this);

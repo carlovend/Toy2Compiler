@@ -141,7 +141,7 @@ public class ScopeVisitor implements Visitor{
         SymbolTable table = elifOp.getElifTable();
         table.setScope(elifOp.toString());
         table.setFather(father);
-        System.out.println(father.getScope()+"SONO PADRE DI ELIF");
+
         if (elifOp.getBodyOp() != null) {
             father = elifOp.getElifTable();
             elifOp.getBodyOp().accept(this);
@@ -153,7 +153,7 @@ public class ScopeVisitor implements Visitor{
     @Override
     public Object visit(IfOp ifOp) throws Exception {
         SymbolTable tmp = father;
-        System.out.println(father.getScope()+"CERCOPADRE");
+
         ifOp.setTable(new SymbolTable());
         SymbolTable table = ifOp.getTable();
         table.setScope("If-Then");
@@ -176,7 +176,7 @@ public class ScopeVisitor implements Visitor{
 
         if (ifOp.getElseBody().getBody() != null) {
             father = ifOp.getElseTable();
-            System.out.println(elseTable.getFather()+"SONO ELSE E STAMPO PADRE");
+
             ifOp.getElseBody().getBody().accept(this);
             father = ifOp.getElseTable().getFather();
         }
@@ -186,7 +186,7 @@ public class ScopeVisitor implements Visitor{
 
     @Override
     public Object visit(Stat stat) throws Exception {
-        System.out.println(stat.getValue()+"SONO NEL FOTTYTO");
+
         if (stat.getValue()!=null) {
             if (stat.getValue().equals("WRITE")) {
                 if (!stat.getExprs().isEmpty()) {
@@ -198,7 +198,7 @@ public class ScopeVisitor implements Visitor{
             }
             if (stat.getValue().equals("READ")) {
                 for (ExprOp exprOp: stat.getExprs()) {
-                    System.out.println(exprOp + "SUCATEMELEEEE");
+
                     if (exprOp.isDollar()  && !exprOp.isId()) {
                         throw new Exception("SONO CONCESSI SOLO ID");
                     }
@@ -287,7 +287,7 @@ public class ScopeVisitor implements Visitor{
                      s.accept(this);
                  }
                 if (s instanceof ProcCallOp) {
-                    System.out.println(s.toString()+"PROCCAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAL");
+
                     s.accept(this);
                 }
              }
