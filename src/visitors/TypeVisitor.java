@@ -1,5 +1,6 @@
 package visitors;
 
+import javafx.geometry.Side;
 import nodi.*;
 import nodi.expr.*;
 import nodi.statements.ElifOp;
@@ -20,16 +21,12 @@ public class TypeVisitor implements Visitor {
     private SymbolTable currentScope;
 
     private static final String[][] combinazioniAritOp= { {"integer", "integer", "integer"},
+            {"string", "string", "string"},
             {"integer", "real", "real"},
             {"real", "integer", "real"},
             {"real", "real", "real"} };
 
-    private static final String[][] combinazioniStrOp= { {"string", "string", "string"},
-            {"string", "real","string"},
-            {"string","integer","string"},
-            {"integer","string","string"},
-            {"real","string","string"},
-            };
+
 
     private static final String[][] combinazioniBooleanOp= { {"boolean", "boolean", "boolean"} };
 
@@ -56,6 +53,7 @@ public class TypeVisitor implements Visitor {
     @Override
     public Object visit(BinaryOP binaryOP) throws Exception {
         String type1 = (String) binaryOP.getExpr1().accept(this);
+        System.out.println("SONO NELLA FOTTUTA BINARY"+binaryOP.getExpr1());
         if (type1.contains("integer")) {
             type1 = "integer";
         }
@@ -80,18 +78,13 @@ public class TypeVisitor implements Visitor {
         }else {
 
         }
-        String opType = binaryOP.getType();
+        String opType = binaryOP.getOp();
         if (opType.equals("plusOp")||opType.equals("minusOp")||opType.equals("timesOp")||opType.equals("divOp")) {
             for (String[] c: combinazioniAritOp) {
                 if (type1.equals(c[0])&&type2.equals(c[1])) {
                     binaryOP.setType(c[2]);
                     return c[2];
                 }
-                for (String[] d : combinazioniStrOp) {
-                    if (type1.equals(d[0])&&type2.equals(d[1])) {
-                        binaryOP.setType(d[2]);
-                        return d[2];
-                }}
             }
             throw new Exception("errore nella binary");
         }
@@ -227,7 +220,7 @@ public class TypeVisitor implements Visitor {
 
         }
 
-        return typeExpr.get(0);
+        return typeExpr;
     }
 
     @Override
@@ -274,6 +267,7 @@ public class TypeVisitor implements Visitor {
 
     @Override
     public Object visit(ProcCallOp procCallOp) throws Exception {
+
         //controllare se i parametri ceh diamo alla procedura coincidono con quelli che sono della procedura
         //se è una chiamata di funzioen la funzione puo restituire solo un paramrtro
         //controllare i ref e gli out
@@ -445,67 +439,74 @@ public class TypeVisitor implements Visitor {
                     return stat.getExprs();
                 }
                 return null;
-            }else {
-            return null;
+            }if (stat.getValue().equals("WRITE")){
+                if (stat.getExprs()!=null) {
+                    for (ExprOp e : stat.getExprs()) {
+                        e.accept(this);
+
+                    }
+
+                }
             }
             }
 
 
 
-        if (!(stat instanceof WhileOp) && !(stat instanceof IfOp) && !(stat instanceof ElifOp) && !(stat instanceof ProcCallOp)) {
+        if (!(stat instanceof WhileOp) && !(stat instanceof IfOp) && !(stat instanceof ElifOp) && !(stat instanceof ProcCallOp)&&stat.getValue()==null) {
             ArrayList<String> valueOfExprs = new ArrayList<>();
+            ArrayList<String> tipiDestra = new ArrayList<>();
+            int nDestra = 0;
             if (stat.getExprs() != null) {
                 for (ExprOp e : stat.getExprs()) {
                     if (e instanceof FunCallOp) {
-                       String value = (String) e.accept(this);
-
-                        valueOfExprs.add(value);
-                        FieldType.TypeFunction t = (FieldType.TypeFunction) functionTypes(((FunCallOp) e).getId());
-                        ArrayList<String> tipiDiRitorno = t.getOutputParams();
-                        if (tipiDiRitorno.size()>1) {
-                            throw new Exception("LA FUNZIONE RESTITUISCE PIU DI UN VALORE");
+                        e.accept(this);
+                        Row r = currentScope.lookUp(((FunCallOp) e).getId().getId());
+                        Function f = null;
+                        if (r!=null) {
+                        if (r.getNode() instanceof Function) {
+                            f = (Function) r.getNode();
+                        }}else {
+                            throw new Exception("Non è una function");
                         }
-                        continue;
+                        tipiDestra = (ArrayList<String>) f.accept(this);
+                        nDestra = nDestra+tipiDestra.size();
                     }
-                   Object valeu = e.accept(this);
-                    if (valeu instanceof String) {
-                    valueOfExprs.add((String) valeu);}
+                    else{
+                        String tipo = (String) e.accept(this);
+                        tipiDestra.add(tipo);
+                        nDestra = nDestra+1;
+                    }
                 }
-                ArrayList<String> valueOfIds = new ArrayList<>();
+                if (stat.getIds().size() != nDestra) {
+                    throw new Exception("IL NUMERO DI TIPI NON COINCIDE");
+                }
+                ArrayList<String> tipiSinistra = new ArrayList<>();
                 for (Identifier i: stat.getIds()) {
-
-                    String v = (String) i.accept(this);
-                    valueOfIds.add(v);
+                    String tipo = (String) i.accept(this);
+                    tipiSinistra.add(tipo);
                 }
-                Iterator<String> iter1 = valueOfIds.iterator();
-                Iterator<String> iter2 = valueOfExprs.iterator();
+                Iterator<String> iter1 = tipiDestra.iterator();
+                Iterator<String> iter2 = tipiSinistra.iterator();
 
-                if (valueOfIds.size()!=valueOfExprs.size()) {
-                    throw new Exception("ERRORE NELL ASSIGN CI NUMERO DI PARAMETRI SBAGLIATI");
-                }
-                while (iter1.hasNext() && iter2.hasNext()) {
+                while (iter1.hasNext()&&iter2.hasNext()) {
                     String t1 = iter1.next();
                     String t2 = iter2.next();
 
-                    if (t1.equals("integer_const")||t2.equals("integer_const")){
-                        t1 = "integer";
-                        t2 = "integer";
-                    }
-                    if (t1.equals("string_const")||t2.equals("string_const")) {
-                        t1 = "string";
+                    if (t2.contains("string")) {
                         t2 = "string";
                     }
-                    if (t1.equals("real_const")||t2.equals("real_const")) {
-                        t1 = "real";
+                    if (t2.contains("real")) {
                         t2 = "real";
                     }
-
+                    if (t2.contains("integer")) {
+                        t2 = "integer";
+                    }
+                    System.out.println(t1+t2);
                     if (!t1.equals(t2)) {
-                        throw new Exception("ERRORE NEI TIPI DELLA ASSIGN");
+                        throw new Exception("I TIPI DI SINISTRA E DESTRA NON COINCIDNO");
                     }
                 }
-            }
-        }
+        }}
         if (stat instanceof WhileOp) {
             stat.accept(this);
         }
@@ -586,6 +587,7 @@ public class TypeVisitor implements Visitor {
     }
 
     boolean isReturnPresente = false;
+    ArrayList<String> funcParamId = new ArrayList<>();
     @Override
     public Object visit(Function function) throws Exception {
         isReturnPresente = false;
@@ -599,7 +601,11 @@ public class TypeVisitor implements Visitor {
         }
         SymbolTable tmp = currentScope;
         currentScope = function.getTable();
-
+        if (function.getFunc()!=null) {
+            for (FuncParams f : function.getFunc()) {
+                funcParamId.add(f.getId().getId());
+            }
+        }
         ArrayList<ExprOp> exprs = new ArrayList<>();
         if (function.getBody()!= null) {
           exprs = (ArrayList<ExprOp>) function.getBody().accept(this);
@@ -643,6 +649,7 @@ public class TypeVisitor implements Visitor {
         if (!isReturnPresente) {
             throw new Exception("RETURN NON PRESENTE");
         }
+        funcParamId.clear();
         return returnType;
 
     }
@@ -696,14 +703,14 @@ public class TypeVisitor implements Visitor {
                         int i = 0;
                        if (!p.isEmpty())
                         for (ExprOp e : s.getExprs()) {
-
                             if (e instanceof Identifier) {
                                 for (int c = 0; c<p.size();c++) {
                                     if (((Identifier) e).getId().equals(p.get(c).getId().getId())) {
                                         ((Identifier) e).setValue(p.get(c).getId().getValue());
                                     }
                                 }
-                            }}
+                            }
+                        }
                         }
                     }
                 }
@@ -713,6 +720,7 @@ public class TypeVisitor implements Visitor {
         if (procedure.getBody()!=null) {
             procedure.getBody().accept(this);
         }
+
         currentScope = tmp;
         return null;
     }

@@ -7,12 +7,12 @@ public class BinaryOP extends ExprOp implements Visitable {
 
     private ExprOp expr1, expr2;
 
-    private String type;
+    private String op;
     public BinaryOP(String type, ExprOp expr1, ExprOp expr2) {
         super(type);
         super.add(expr1);
         super.add(expr2);
-        this.type = type;
+        this.op = type;
         this.expr1=expr1;
         this.expr2=expr2;
     }
@@ -27,9 +27,13 @@ public class BinaryOP extends ExprOp implements Visitable {
 
     public String toString() {return super.toString();}
 
+    public String getOp() {
+        return op;
+    }
+
     @Override
     public String getType() {
-        return type;
+        return super.getType();
     }
 
     @Override

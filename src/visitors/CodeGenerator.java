@@ -14,6 +14,8 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.lang.reflect.Array;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class CodeGenerator implements Visitor {
 
@@ -69,19 +71,25 @@ public class CodeGenerator implements Visitor {
 
         return type;
     }
-
+    boolean isString = false;
     @Override
     public Object visit(BinaryOP binaryOP) throws Exception {
+
         String espressione = "";
-        String tipoEspressione = convertTypeOp(binaryOP.getType());
+        String expr1 = "";
+        String expr2 = "";
+        String tipoEspressione = convertTypeOp(binaryOP.getOp());
 
-        String expr1 = (String) binaryOP.getExpr1().accept(this);
-        String expr2 = (String) binaryOP.getExpr2().accept(this);
 
-        String tipoOperazione = binaryOP.getType();
+
+        expr1 = (String) binaryOP.getExpr1().accept(this);
+        expr2 = (String) binaryOP.getExpr2().accept(this);
+        String tipoOperazione = binaryOP.getOp();
 
         if (tipoOperazione.equals("plusOp") || tipoOperazione.equals("minusOp") || tipoOperazione.equals("timesOp") || tipoOperazione.equals("divOp")) {
+
             espressione = expr1 + tipoEspressione + expr2;
+            System.out.println(espressione+"EVVAIAIAII");
             return espressione;
         }
 
@@ -96,6 +104,8 @@ public class CodeGenerator implements Visitor {
             espressione = expr1 + tipoEspressione + expr2;
             return espressione;
         }
+
+
 
         return null;
     }
@@ -150,15 +160,24 @@ public class CodeGenerator implements Visitor {
         // Ottieni gli argomenti della funzione
         List<ExprOp> arguments = funCallOp.getExprsList();
         List<String> argumentStrings = new ArrayList<>();
-
+        StringBuilder builder = new StringBuilder();
         // Genera il codice per ciascun argomento
         for (ExprOp argument : arguments) {
+            if (argument instanceof ConstOp) {
             String argumentCode = (String) argument.accept(this);
-            argumentStrings.add(argumentCode);
+            String t = ((ConstOp) argument).getValue().replace("\"","");
+            builder.append(argumentCode);
+        }
+            if (argument instanceof BinaryOP){
+                String res = (String) argument.accept(this);
+                res = res.replace("\"","");
+                res = res.replace("+","");
+                builder.append("\""+res+"\"");
+            }
         }
 
         // Genera il codice per la chiamata di funzione
-        String functionCallCode = functionName + "(" + String.join(", ", argumentStrings) + ")";
+        String functionCallCode = functionName + "(" + String.join(", ", builder) + ")";
 
         // Restituisci il codice generato
         return functionCallCode;
@@ -197,11 +216,12 @@ public class CodeGenerator implements Visitor {
     public Object visit(ProcCallOp procCallOp) throws Exception {
         return null;
     }
-
+    ArrayList<String> outParam = new ArrayList<>();
     @Override
     public Object visit(ProcParams procParams) {
         String parametro = "";
         if (procParams.getId().getValue().equals("OUT")) {
+            outParam.add(procParams.getId().getId());
             if (procParams.getType().getType().equals("string")) {
                 parametro = convertType(procParams.getType().getType())+" "+procParams.getId().getId();
                 return  parametro;
@@ -231,8 +251,10 @@ public class CodeGenerator implements Visitor {
     @Override
     public Object visit(ElifOp elifOp) throws Exception {
         currentScope = elifOp.getElifTable();
+        String condizione = (String) elifOp.getExprOp().accept(this);
+        condizione = estraiIdentificatori(condizione,outParam);
         if (elifOp.getBodyOp() != null) {
-            writer.write(" else if (" + (String) elifOp.getExprOp().accept(this) + ") {\n");
+            writer.write(" else if (" + condizione + ") {\n");
             elifOp.getBodyOp().accept(this);
         }
         writer.write("}\n");
@@ -244,6 +266,7 @@ public class CodeGenerator implements Visitor {
     public Object visit(IfOp ifOp) throws Exception {
         currentScope = ifOp.getTable();
         String condizione = (String) ifOp.getExprOpStat().accept(this);
+        condizione = estraiIdentificatori(condizione,outParam);
         writer.write("if("+condizione+") {\n");
         if (ifOp.getBodyOpIf()!=null) {
             ifOp.getBodyOpIf().accept(this);
@@ -274,25 +297,38 @@ public class CodeGenerator implements Visitor {
         if (stat.getValue() != null && stat.getValue().equals("WRITE")) {
             if (stat.getExprs() != null) {
                 // Inizia la costruzione della printf
-                builder.append("printf(");
+                builder.append("printf(\"");
 
                 for (ExprOp e : stat.getExprs()) {
+                    System.out.println(e.toString());
                     if (e instanceof Identifier) {
                         String type = typeVisit((Identifier) e);
                         if (type.equals("integer")) {
-                            builder.append("\"%d\"");
+                            builder.append("%d");
                         } else if (type.equals("string")) {
-                            builder.append("\"%s\"");
+                            builder.append("%s");
                         } else if (type.equals("real")) {
-                            builder.append("\"%f\"");
+                            builder.append("%f");
                         }
                     } else if (e instanceof ConstOp) {
                         // Aggiungi il valore costante direttamente
-                        builder.append(((ConstOp) e).getValue()).append(" ");
+                        String t = ((ConstOp) e).getValue().replace("\"","");
+                        builder.append(t).append(" ");
+
                     } else if (e instanceof BinaryOP) {
                         // Aggiungi l'espressione binaria valutata
+
                         String binaryExpr = (String) e.accept(this);
-                        builder.append("\"%d\"");  // Puoi adattare questa parte in base al tipo dell'espressione binaria
+                        System.out.println("SONO NELLA FOTTUTA BINARY"+binaryExpr);
+                        writer.append("");
+                        if (e.getType()!=null) {
+                            System.out.println("sono nel type");
+                        if (e.getType().equals("integer")) {
+                        builder.append("%d ");}
+                        if (e.getType().equals("real")) {
+                            builder.append("%f ");}
+                        if (e.getType().equals("string")) {
+                            builder.append("%s ");}}
                     } else {
                         // Altri casi di espressioni
                         String toAppend = (String) e.accept(this);
@@ -301,8 +337,10 @@ public class CodeGenerator implements Visitor {
                 }
 
                 // Aggiungi l'operatore di ritorno a capo
-                builder.append("");
-
+                    builder.append("\"");
+                if (stat.getExprs().isEmpty()) {
+                    writer.write(");\n");
+                }else {
                 // Aggiungi gli argomenti per la printf
                 for (ExprOp e : stat.getExprs()) {
                     if (e instanceof Identifier || e instanceof BinaryOP) {
@@ -310,9 +348,69 @@ public class CodeGenerator implements Visitor {
                     }
                 }
 
-                builder.append(");\n");
+                    builder.append(");\n");
+                }
+
+
+                writer.write(String.valueOf(builder));
             }
-            writer.write(String.valueOf(builder));
+
+        }
+
+        if (stat.getValue() != null && stat.getValue().equals("WRITERETURN")) {
+
+            if (stat.getExprs() != null&& !stat.getExprs().isEmpty()) {
+                builder.append("printf(\"");
+                // Inizia la costruzione della printf
+                for (ExprOp e : stat.getExprs()) {
+                    System.out.println(e.toString());
+                    if (e instanceof Identifier) {
+                        String type = typeVisit((Identifier) e);
+                        if (type.equals("integer")) {
+                            builder.append("%d");
+                        } else if (type.equals("string")) {
+                            builder.append("%s");
+                        } else if (type.equals("real")) {
+                            builder.append("%f");
+                        }
+                    } else if (e instanceof ConstOp) {
+                        // Aggiungi il valore costante direttamente
+                        String t = ((ConstOp) e).getValue().replace("\"","");
+                        builder.append(t).append(" ");
+                    } else if (e instanceof BinaryOP) {
+                        // Aggiungi l'espressione binaria valutata
+
+                        String binaryExpr = (String) e.accept(this);
+                        writer.append("");
+                        builder.append("%d ");
+                    } else {
+                        // Altri casi di espressioni
+                        String toAppend = (String) e.accept(this);
+                        builder.append(toAppend).append(" ");
+                    }
+                }
+
+                // Aggiungi l'operatore di ritorno a capo
+                builder.append("\\n\"");
+                if (stat.getExprs().isEmpty()) {
+                    writer.write("\\n);\n");
+                }else {
+                    // Aggiungi gli argomenti per la printf
+                    for (ExprOp e : stat.getExprs()) {
+                        if (e instanceof Identifier || e instanceof BinaryOP) {
+                            builder.append(", ").append((String) e.accept(this));
+                        }
+                    }
+
+                    builder.append(");\n");
+                }
+
+
+                writer.write(String.valueOf(builder));
+            }else {
+                writer.write("printf(\"\\n\");\n");
+            }
+
         }
 
 
@@ -320,29 +418,59 @@ public class CodeGenerator implements Visitor {
             if (stat.getExprs() != null && stat.getExprs().size() > 0) {
                 StringBuilder scanfFormat = new StringBuilder("scanf(\"");
                 StringBuilder scanfArgs = new StringBuilder();
+                ArrayList<ExprOp> expr = stat.getExprs();
+                for (int i = 0; i < expr.size(); i++) {
 
-                for (ExprOp expr : stat.getExprs()) {
-                    if (expr instanceof ConstOp) {
-                        String t = (String) expr.accept(this);
+                    if (expr.get(i) instanceof ConstOp) {
+                        String t = (String) expr.get(i).accept(this);
                         writer.write("printf(" + t + ");\n");
-                    } else if (expr instanceof Identifier) {
-                        String type = typeVisit((Identifier) expr);
+                        if (expr.get(i+1) instanceof Identifier) {
+                            String type = typeVisit((Identifier) expr.get(i+1));
+                            if (type.equals("integer_const")||type.equals("integer")) {
+                                scanfFormat.append("%d ");
+                                if (((Identifier) expr.get(i+1)).getValue().equals("OUT")) {
+                                    scanfArgs.append("").append(((Identifier) expr.get(i+1)).getId()).append(" ");
+                                    i++;
+                                continue;}
+                            } else if (type.equals("real_const")||type.equals("real")) {
+                                scanfFormat.append("%f ");
+                                if (((Identifier) expr.get(i+1)).getValue().equals("OUT")) {
+                                    scanfArgs.append("").append(((Identifier) expr.get(i+1)).getId()).append(" ");
+                                    i++;
+                                continue;}
+                            } else if (type.equals("string_const")||type.equals("string")) {
+                                scanfFormat.append("%s ");
+                                scanfArgs.append("").append(((Identifier) expr.get(i+1)).getId()).append(" ");
+                               i++;
+                               continue;
+                            }
+
+                            // Aggiungi l'argomento per la scanf
+                            scanfArgs.append("&").append(((Identifier) expr.get(i+1)).getId()).append(" ");
+                            i++;
+                        }
+
+                    } else if (expr.get(i) instanceof Identifier) {
+                        String type = typeVisit((Identifier) expr.get(i));
+                        System.out.println(((Identifier) expr.get(i)).getId()+"SONO QUIIIII");
                         if (type.equals("integer_const")||type.equals("integer")) {
                             scanfFormat.append("%d ");
+                            if (((Identifier) expr.get(i)).getValue().equals("OUT")) {
+                                scanfArgs.append("").append(((Identifier) expr.get(i)).getId()).append(" ");
+                                continue;}
                         } else if (type.equals("real_const")||type.equals("real")) {
-                            scanfFormat.append("%lf ");
-                            if (((Identifier) expr).getValue().equals("OUT")) {
-                                scanfArgs.append("").append(((Identifier) expr).getId()).append(" ");
+                            scanfFormat.append("%f ");
+                            if (((Identifier) expr.get(i)).getValue().equals("OUT")) {
+                                scanfArgs.append("").append(((Identifier) expr.get(i)).getId()).append(" ");
                                 continue;}
                         } else if (type.equals("string_const")||type.equals("string")) {
                             scanfFormat.append("%s ");
-                            if (((Identifier) expr).getValue().equals("OUT")) {
-                                scanfArgs.append("").append(((Identifier) expr).getId()).append(" ");
-                                continue;}
+                            scanfArgs.append("").append(((Identifier) expr.get(i)).getId()).append(" ");
+                            continue;
                         }
 
                         // Aggiungi l'argomento per la scanf
-                        scanfArgs.append("&").append(((Identifier) expr).getId()).append(" ");
+                        scanfArgs.append("&").append(((Identifier) expr.get(i)).getId()).append(" ");
                     }
                 }
 
@@ -358,25 +486,7 @@ public class CodeGenerator implements Visitor {
             ArrayList<String> tipi = new ArrayList<>();
             ArrayList<String> idString = new ArrayList<>();
 
-            if (stat.getIds() != null && stat.getExprs() != null) {
 
-                for (int i = 0; i < stat.getIds().size(); i++) {
-                    Identifier identifier = stat.getIds().get(i);
-                    ExprOp expression = stat.getExprs().get(i);
-
-                    tipi.add(typeVisit(identifier));
-                    idString.add(identifier.getId());
-                    String d = (String) typeVisit(identifier);
-                    d = convertType(d);
-                    String t = (String) expression.accept(this);
-                    if (expression instanceof FunCallOp) {
-                        t = (String) expression.accept(this);
-                    }
-
-                    // Genera l'assegnamento
-                    writer.write( d  + " " + identifier.getId() + " = " + t+ ";\n");
-                }
-            }
         }
 
         if (stat instanceof WhileOp) {
@@ -396,12 +506,36 @@ public class CodeGenerator implements Visitor {
         }
         return null;
     }
+    // Funzione per estrarre identificatori e aggiungere '*'
+    public static String estraiIdentificatori(String inputString,ArrayList<String>arrayListID) {
+        // Pattern per identificatori (sequenze di caratteri alfanumerici)
+        Pattern pattern = Pattern.compile("\\b[a-zA-Z]\\w*\\b");
+        Matcher matcher = pattern.matcher(inputString);
 
+        // StringBuffer per costruire la nuova stringa
+        StringBuffer result = new StringBuffer();
+
+        // Trova e sostituisci ogni identificatore
+        while (matcher.find()) {
+            String identifier = matcher.group();
+
+            // Verifica se l'identificatore è presente nell'ArrayList di ID
+            if (arrayListID.contains(identifier)) {
+                matcher.appendReplacement(result, "*" + identifier );
+            } else {
+                matcher.appendReplacement(result, identifier);
+            }
+        }
+        matcher.appendTail(result);
+
+        return result.toString();
+    }
     @Override
     public Object visit(WhileOp whileOp) throws Exception {
         currentScope = whileOp.getTable();
-        String condition = (String) whileOp.getExprOp().accept(this);
-        writer.write("while (" + condition + ") {\n");
+        String condizione = (String) whileOp.getExprOp().accept(this);
+        condizione = estraiIdentificatori(condizione,outParam);
+        writer.write("while (" + condizione + ") {\n");
 
         if (whileOp.getBodyOp() != null) {
             whileOp.getBodyOp().accept(this);
@@ -477,9 +611,9 @@ public class CodeGenerator implements Visitor {
                 String t = iter2.next();
                 String c = iter3.next();
 
-                // Ora puoi controllare il tipo e generare il codice C di conseguenza
+
                 if (t.equals("string_const") || t.equals("integer_const") || t.equals("real_const") || t.equals("boolean")) {
-                    // Gestisci il caso in cui il tipo è una stringa
+
 
                     writer.write(convertType(t) + " " + id + "=" + c + ";\n");
                 }
@@ -490,13 +624,16 @@ public class CodeGenerator implements Visitor {
 
         ArrayList<Identifier> ids = decls.getIds();
         if (!ids.isEmpty()) {
+
             writer.write(tipo + " " + ids.get(0).getId());
         }
 
         for (int i = 1; i < ids.size(); i++) {
             writer.write(", " + ids.get(i).getId());
         }
-
+        if (tipo.equals("char*")) {
+            writer.write(" = (char *)malloc(100 * sizeof(char))");
+        }
         writer.write(";\n");
 
         return null;
@@ -532,26 +669,29 @@ public class CodeGenerator implements Visitor {
         currentScope = function.getTable();
         i++;
 
-        // Restituisci il tipo della struct come tipo di ritorno della funzione
-        writer.write("typedef struct " + function.getId().getId() + "_struct" + " {\n");
+        // Se ci sono almeno due parametri, genera la struct
+        if (function.getFunc() != null && function.getTypes().size() > 1) {
+            writer.write("typedef struct " + function.getId().getId() + "_struct" + " {\n");
 
-        // Gestisci i parametri della struct
-        if (function.getFunc() != null && !function.getFunc().isEmpty()) {
             ArrayList<String> paramList = new ArrayList<>();
             int c = 0;
+
             for (Type param : function.getTypes()) {
                 c++;
                 String fieldType = convertType(param.getType());
-                String fieldName = "result"+c;
+                String fieldName = "result" + c;
                 writer.write("    " + fieldType + " " + fieldName + ";\n");
             }
+
+            writer.write("} " + function.getId().getId() + "_struct;\n");
+
+            // Controlla se il tipo di ritorno è uguale al tipo del primo parametro
+            writer.write(function.getId().getId() + "_struct "+ function.getId().getId() +"(" );
         }
 
-        writer.write("} " + function.getId().getId() + "_struct;\n");
-
-        // Genera la firma della funzione
-        writer.write(function.getId().getId() + "_struct " + function.getId().getId() + "(");
-
+        if (function.getTypes().size()==1) {
+            writer.write(convertType(function.getFunc().get(0).getType().getType()) + function.getId().getId() + "(");
+        }
         // Gestisci i parametri della funzione
         if (function.getFunc() != null && !function.getFunc().isEmpty()) {
             ArrayList<String> paramList = new ArrayList<>();
@@ -590,7 +730,7 @@ public class CodeGenerator implements Visitor {
             }
         }
 
-        writer.write("return s"+i +"\n");
+        writer.write("return s"+i +";\n");
         writer.write("}\n");
 
         currentScope = function.getTable().getFather();
@@ -599,7 +739,7 @@ public class CodeGenerator implements Visitor {
 
 
 
-
+Procedure pMain = null;
     @Override
     public Object visit(Iter iter) throws Exception {
         if (iter.getDecls() != null) {
@@ -610,13 +750,19 @@ public class CodeGenerator implements Visitor {
             }
         }
 
+
         if (iter.getFunction()!=null) {
             iter.getFunction().accept(this);
         }
 
         if (iter.getProc()!=null) {
             Row proc = null;
-            proc = (Row) iter.getProc().accept(this);
+            if (iter.getProc().getId().getId().equals("main")) {
+                pMain = iter.getProc();
+
+            }else {
+                proc = (Row) iter.getProc().accept(this);
+            }
         }
         return null;
     }
@@ -644,8 +790,17 @@ public class CodeGenerator implements Visitor {
         }
         if (!procedure.getId().getId().equals("main")) {
         writer.write(") {\n");}
+        Stat assign = null;
         if (procedure.getBody() != null) {
+            if (procedure.getBody().getStats()!=null) {
+                for (Stat s : procedure.getBody().getStats()) {
+                    if (!(s instanceof WhileOp) && !(s instanceof IfOp) && !(s instanceof ElifOp) && !(s instanceof ProcCallOp)&&s.getValue()==null) {
+                        assign = s;
+                    }
+                }
+            }
             procedure.getBody().accept(this);
+        outParam.clear();
         }
 
         writer.write("}\n");
@@ -659,29 +814,32 @@ public class CodeGenerator implements Visitor {
         currentScope = program.getTable();
 
 
-        if (program.getIter().size() > 0) {
 
+        if (!program.getNoProc().isEmpty()) {
             Row iterList;
-            for (Iter i : program.getIter()) {
-                iterList = (Row) i.accept(this);
 
-            }
-        }
-
-        if (program.getNoProc().size() > 0) {
-            Row iterList;
             for (Iter i : program.getNoProc()) {
                 iterList = (Row) i.accept(this);
 
             }}
 
+        if (!program.getIter().isEmpty()) {
+
+            Row iterList;
+            for (Iter i : program.getIter()) {
+                iterList = (Row) i.accept(this);
+                System.out.println("SONO IN NO PROc"+ i.toString());
+            }
+        }
+
 
             if (program.getProc() != null) {
                 Row proc = null;
                 proc = (Row) program.getProc().accept(this);
+                System.out.println("SONO IN NO PROc"+program.getProc().getId().getId());
             }
-
-
+            if (pMain!=null) {
+            pMain.accept(this);}
             writer.close();
             return null;
         }
