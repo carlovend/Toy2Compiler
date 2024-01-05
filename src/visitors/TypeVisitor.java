@@ -53,7 +53,7 @@ public class TypeVisitor implements Visitor {
     @Override
     public Object visit(BinaryOP binaryOP) throws Exception {
         String type1 = (String) binaryOP.getExpr1().accept(this);
-        System.out.println("SONO NELLA FOTTUTA BINARY"+binaryOP.getExpr1());
+
         if (type1.contains("integer")) {
             type1 = "integer";
         }
@@ -189,11 +189,12 @@ public class TypeVisitor implements Visitor {
             if (nParamDellaRow!=nParametriDellaChiamata) {
                 throw new Exception("I PARAMETRI DELLA FUNZIONE E DELLA CHIAMATA NON COINCIDONO");
             }
+            if (funCallOp.getExprsList()!=null) {
             for (ExprOp e: funCallOp.getExprsList()) {
                 if (e instanceof FunCallOp) {continue;}
                 String type = (String) e.accept(this);
                 typeExpr.add(type);
-            }
+            }}
 
             //verifichiamo se i tipi coincidono
             ArrayList<String> tipiDellaFirma = ((FieldType.TypeFunction)result.getType()).getInputParams();
@@ -492,16 +493,19 @@ public class TypeVisitor implements Visitor {
                     String t1 = iter1.next();
                     String t2 = iter2.next();
 
-                    if (t2.contains("string")) {
+                    if (t2.contains("string")||t1.contains("string")) {
                         t2 = "string";
+                        t1 = "string";
                     }
-                    if (t2.contains("real")) {
+                    if (t2.contains("real")||t1.contains("real")) {
                         t2 = "real";
+                        t1 = "real";
                     }
-                    if (t2.contains("integer")) {
+                    if (t2.contains("integer")||t1.contains("integer")) {
                         t2 = "integer";
+                        t1 = "integer";
                     }
-                    System.out.println(t1+t2);
+
                     if (!t1.equals(t2)) {
                         throw new Exception("I TIPI DI SINISTRA E DESTRA NON COINCIDNO");
                     }
