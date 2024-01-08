@@ -22,6 +22,12 @@ public class TypeVisitor implements Visitor {
 
     private static final String[][] combinazioniAritOp= { {"integer", "integer", "integer"},
             {"string", "string", "string"},
+            {"string","integer","string"},
+            {"string","real","string"},
+            {"string","boolean","string"},
+            {"integer","string","string"},
+            {"real","string","string"},
+            {"boolean","string","string"},
             {"integer", "real", "real"},
             {"real", "integer", "real"},
             {"real", "real", "real"} };
@@ -56,12 +62,15 @@ public class TypeVisitor implements Visitor {
 
         if (type1.contains("integer")) {
             type1 = "integer";
+            binaryOP.getExpr1().setType(type1);
         }
         else if (type1.contains("string")) {
             type1 = "string";
+            binaryOP.getExpr1().setType(type1);
         }
         else if (type1.contains("real")) {
             type1 = "real";
+            binaryOP.getExpr1().setType(type1);
         }else {
 
         }
@@ -69,16 +78,20 @@ public class TypeVisitor implements Visitor {
         String type2 = (String) binaryOP.getExpr2().accept(this);
         if (type2.contains("integer")) {
             type2 = "integer";
+            binaryOP.getExpr2().setType(type2);
         }
         else if (type2.contains("string")) {
             type2 = "string";
+            binaryOP.getExpr2().setType(type2);
         }
         else if (type2.contains("real")) {
             type2 = "real";
+            binaryOP.getExpr2().setType(type2);
         }else {
 
         }
         String opType = binaryOP.getOp();
+
         if (opType.equals("plusOp")||opType.equals("minusOp")||opType.equals("timesOp")||opType.equals("divOp")) {
             for (String[] c: combinazioniAritOp) {
                 if (type1.equals(c[0])&&type2.equals(c[1])) {
@@ -300,6 +313,7 @@ public class TypeVisitor implements Visitor {
                     outONormal.add(((Identifier) e).getValue());
 
                     nParams = nParams+1;
+                    typeOfParam.add(p);
                     continue;
                 }
                 if (p.equals("integer_const")){
@@ -323,12 +337,36 @@ public class TypeVisitor implements Visitor {
             }else {
                 //se il numero di parametri della chiamata e della firma coincidono ci assicuriamo che sono dello stesso tipo
                 //dello stesso tipo e anche che i ref e gli out sono al posto giusto
+
                 Iterator<String> iter1 = typeOfParam.iterator();
-                Iterator<String> iter2 = stringOfReturnType.iterator();
+                FieldType.TypeFunction s= (FieldType.TypeFunction) functionTypes(procCallOp.getId());
+                ArrayList<String> tipiDellaFirma = new ArrayList<>(s.getInputParams());
+
+                Iterator<String> iter2 = tipiDellaFirma.iterator();
 
                 while (iter1.hasNext()&& iter2.hasNext()) {
                     String tipo1 = iter1.next();
                     String tipo2 = iter2.next();
+
+                    if (tipo1.contains("string")) {
+                        tipo1 = "string";
+                    }
+                    if (tipo2.contains("string")) {
+                        tipo2 = "string";
+                    }
+                    if (tipo1.contains("real")) {
+                        tipo1 = "real";
+                    }
+                    if (tipo2.contains("real")) {
+                        tipo2 = "real";
+                    }
+                    if (tipo2.contains("integer")) {
+                        tipo2 = "integer";
+                    }
+                    if (tipo1.contains("integer")) {
+                        tipo1 = "integer";
+                    }
+
                     if (!tipo1.equals(tipo2)) {
                         throw new Exception("I TIPI PASSATI ALLA PROCEDURA NON COINCIDONO CON LA FIRMA");
                     }
@@ -493,16 +531,22 @@ public class TypeVisitor implements Visitor {
                     String t1 = iter1.next();
                     String t2 = iter2.next();
 
-                    if (t2.contains("string")||t1.contains("string")) {
-                        t2 = "string";
+                    if (t1.contains("string")) {
                         t1 = "string";
                     }
-                    if (t2.contains("real")||t1.contains("real")) {
-                        t2 = "real";
+                    if (t2.contains("string")) {
+                        t2 = "string";
+                    }
+                    if (t1.contains("real")) {
                         t1 = "real";
                     }
-                    if (t2.contains("integer")||t1.contains("integer")) {
+                    if (t2.contains("real")) {
+                        t2 = "real";
+                    }
+                    if (t2.contains("integer")) {
                         t2 = "integer";
+                    }
+                    if (t1.contains("integer")) {
                         t1 = "integer";
                     }
 

@@ -10,6 +10,7 @@ import nodi.statements.WhileOp;
 import tables.Row;
 import tables.SymbolTable;
 
+import javax.sound.midi.SysexMessage;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -86,16 +87,49 @@ public class CodeGenerator implements Visitor {
         expr1 = (String) binaryOP.getExpr1().accept(this);
         expr2 = (String) binaryOP.getExpr2().accept(this);
         String tipoOperazione = binaryOP.getOp();
-
+        if (binaryOP.getExpr1() instanceof Identifier) {
+            expr1 = estraiIdentificatori(((Identifier) binaryOP.getExpr1()).getId(),outParam);
+        }
+        if (binaryOP.getExpr2() instanceof Identifier) {
+            expr2 = estraiIdentificatori(((Identifier) binaryOP.getExpr2()).getId(),outParam);
+        }
         if (tipoOperazione.equals("plusOp") || tipoOperazione.equals("minusOp") || tipoOperazione.equals("timesOp") || tipoOperazione.equals("divOp")) {
-
+            if (binaryOP.getExpr1().getType().contains("string")&&binaryOP.getExpr2().getType().contains("string")) {
+                expr1 = "str_concat("+expr1+","+expr2+")";
+                return expr1;
+            }
+            if (binaryOP.getExpr1().getType().contains("integer")&&binaryOP.getExpr2().getType().contains("string")) {
+               expr1 = "str_concat("+"integer_to_str("+expr1+"),"+expr2+")";
+               return expr1;
+            }
+            if (binaryOP.getExpr1().getType().contains("string")&&binaryOP.getExpr2().getType().contains("integer")) {
+                expr2 = "str_concat("+expr1+", integer_to_str("+expr2+"))";
+                return expr2;
+            }
+            if (binaryOP.getExpr1().getType().contains("real")&&binaryOP.getExpr2().getType().contains("string")) {
+                expr1 = "str_concat("+"real_to_str("+expr1+"),"+expr2+")";
+                return expr1;
+            }
+            if (binaryOP.getExpr1().getType().contains("string")&&binaryOP.getExpr2().getType().contains("real")) {
+                expr2 = "str_concat("+expr1+", real_to_str("+expr2+"))";
+                return expr2;
+            }
+            if (binaryOP.getExpr1().getType().contains("boolean")&&binaryOP.getExpr2().getType().contains("string")) {
+                expr1 = "str_concat("+"bool_to_str("+expr1+"),"+expr2+")";
+                return expr1;
+            }
+            if (binaryOP.getExpr1().getType().contains("string")&&binaryOP.getExpr2().getType().contains("boolean")) {
+                expr2 = "str_concat("+expr1+", bool_to_str("+expr2+"))";
+                return expr2;
+            }
             espressione = expr1 + tipoEspressione + expr2;
-
             return espressione;
         }
 
         if (tipoOperazione.equals("gtOp") || tipoOperazione.equals("geOp") || tipoOperazione.equals("ltOp") || tipoOperazione.equals("leOp") || tipoOperazione.equals("eqOp") || tipoOperazione.equals("neOp")) {
-
+            if (tipoOperazione.equals("eqOp")&&binaryOP.getExpr1().getType().contains("string")||binaryOP.getExpr2().getType().contains("string")) {
+                return espressione = "strcmp("+expr1+","+expr2+")==0";
+            }
             espressione = expr1 + tipoEspressione + expr2;
             return espressione;
         }
@@ -173,13 +207,12 @@ public class CodeGenerator implements Visitor {
         }
             if (argument instanceof BinaryOP){
                 String res = (String) argument.accept(this);
-                res = res.replace("\"","");
-                res = res.replace("+","");
-                builder.append("\""+res+"\"");
+
+                builder.append(res);
             }
         }}
-        if (builder.length()>0) {
-        builder.replace(builder.length()-1,builder.length(),"");}
+       /* if (builder.length()>0) {
+        builder.replace(builder.length()-1,builder.length(),"");}*/
         // Genera il codice per la chiamata di funzione
         String functionCallCode = functionName + "(" + String.join(", ", builder) + ")";
 
@@ -256,7 +289,7 @@ public class CodeGenerator implements Visitor {
     public Object visit(ElifOp elifOp) throws Exception {
         currentScope = elifOp.getElifTable();
         String condizione = (String) elifOp.getExprOp().accept(this);
-        condizione = estraiIdentificatori(condizione,outParam);
+
         if (elifOp.getBodyOp() != null) {
             writer.write(" else if (" + condizione + ") {\n");
             elifOp.getBodyOp().accept(this);
@@ -270,7 +303,7 @@ public class CodeGenerator implements Visitor {
     public Object visit(IfOp ifOp) throws Exception {
         currentScope = ifOp.getTable();
         String condizione = (String) ifOp.getExprOpStat().accept(this);
-        condizione = estraiIdentificatori(condizione,outParam);
+
         writer.write("if("+condizione+") {\n");
         if (ifOp.getBodyOpIf()!=null) {
             ifOp.getBodyOpIf().accept(this);
@@ -420,67 +453,60 @@ public class CodeGenerator implements Visitor {
 
         if (stat.getValue() != null && stat.getValue().equals("READ")) {
             if (stat.getExprs() != null && stat.getExprs().size() > 0) {
-                StringBuilder scanfFormat = new StringBuilder("scanf(\"");
-                StringBuilder scanfArgs = new StringBuilder();
                 ArrayList<ExprOp> expr = stat.getExprs();
-                for (int i = 0; i < expr.size(); i++) {
-
+                for (int i = 0; i< expr.size(); i++) {
                     if (expr.get(i) instanceof ConstOp) {
                         String t = (String) expr.get(i).accept(this);
-                        writer.write("printf(" + t + ");\n");
-                        if (expr.get(i+1) instanceof Identifier) {
-                            String type = typeVisit((Identifier) expr.get(i+1));
-                            if (type.equals("integer_const")||type.equals("integer")) {
-                                scanfFormat.append("%d ");
+                        writer.write("printf("+t+");\n");
+                        if (expr.get(i+1) instanceof Identifier ) {
+                            String tipo = typeVisit((Identifier) expr.get(i+1));
+                            if (tipo.equals("integer")||tipo.equals("integer_const")) {
+                                writer.write("scanf(\"%d\",");
                                 if (((Identifier) expr.get(i+1)).getValue().equals("OUT")) {
-                                    scanfArgs.append("").append(((Identifier) expr.get(i+1)).getId()).append(" ");
-                                    i++;
-                                continue;}
-                            } else if (type.equals("real_const")||type.equals("real")) {
-                                scanfFormat.append("%f ");
+                                    writer.write(((Identifier) expr.get(i+1)).getId()+");\n");
+                                }else{
+                                    writer.write("&"+((Identifier) expr.get(i+1)).getId()+");\n");
+                                }
+                                i++;
+                            } else if (tipo.contains("real")) {
+                                writer.write("scanf(\"%f\",");
                                 if (((Identifier) expr.get(i+1)).getValue().equals("OUT")) {
-                                    scanfArgs.append("").append(((Identifier) expr.get(i+1)).getId()).append(" ");
-                                    i++;
-                                continue;}
-                            } else if (type.equals("string_const")||type.equals("string")) {
-                                scanfFormat.append("%s ");
-                                scanfArgs.append("").append(((Identifier) expr.get(i+1)).getId()).append(" ");
-                               i++;
-                               continue;
-                            }
-
-                            // Aggiungi l'argomento per la scanf
-                            scanfArgs.append("&").append(((Identifier) expr.get(i+1)).getId()).append(" ");
+                                    writer.write(((Identifier) expr.get(i+1)).getId()+");\n");
+                                }else{
+                                    writer.write("&"+((Identifier) expr.get(i+1)).getId()+");\n");
+                                }
                             i++;
-                        }
-
-                    } else if (expr.get(i) instanceof Identifier) {
-                        String type = typeVisit((Identifier) expr.get(i));
-
-                        if (type.equals("integer_const")||type.equals("integer")) {
-                            scanfFormat.append("%d ");
-                            if (((Identifier) expr.get(i)).getValue().equals("OUT")) {
-                                scanfArgs.append("").append(((Identifier) expr.get(i)).getId()).append(" ");
-                                continue;}
-                        } else if (type.equals("real_const")||type.equals("real")) {
-                            scanfFormat.append("%f ");
-                            if (((Identifier) expr.get(i)).getValue().equals("OUT")) {
-                                scanfArgs.append("").append(((Identifier) expr.get(i)).getId()).append(" ");
-                                continue;}
-                        } else if (type.equals("string_const")||type.equals("string")) {
-                            scanfFormat.append("%s ");
-                            scanfArgs.append("").append(((Identifier) expr.get(i)).getId()).append(" ");
-                            continue;
-                        }
-
-                        // Aggiungi l'argomento per la scanf
-                        scanfArgs.append("&").append(((Identifier) expr.get(i)).getId()).append(" ");
+                            }else if (tipo.contains("string")) {
+                                writer.write("scanf(\"%s\",");
+                                writer.write(((Identifier) expr.get(i+1)).getId()+");\n");
+                                i++;
+                        }}
+                    }else {
+                        if (expr.get(i) instanceof Identifier ) {
+                            String tipo = typeVisit((Identifier) expr.get(i));
+                            if (tipo.equals("integer")||tipo.equals("integer_const")) {
+                                writer.write("scanf(\"%d\",");
+                                if (((Identifier) expr.get(i)).getValue().equals("OUT")) {
+                                    writer.write(((Identifier) expr.get(i)).getId()+");\n");
+                                }else{
+                                    writer.write("&"+((Identifier) expr.get(i)).getId()+");\n");
+                                }
+                                i++;
+                            } else if (tipo.contains("real")) {
+                                writer.write("scanf(\"%f\",");
+                                if (((Identifier) expr.get(i)).getValue().equals("OUT")) {
+                                    writer.write(((Identifier) expr.get(i)).getId()+");\n");
+                                }else{
+                                    writer.write("&"+((Identifier) expr.get(i)).getId()+");\n");
+                                }
+                                i++;
+                            }else if (tipo.contains("string")) {
+                                writer.write("scanf(\"%s\",");
+                                writer.write(((Identifier) expr.get(i)).getId()+");\n");
+                                i++;
+                            }}
                     }
                 }
-
-                // Completa la formattazione della scanf e scrivila nel file
-                scanfFormat.append("\"").append(", ").append(scanfArgs).append(");\n");
-                writer.write(String.valueOf(scanfFormat));
             }
         }
 
@@ -491,17 +517,24 @@ public class CodeGenerator implements Visitor {
             StringBuilder assignBuilder = new StringBuilder();
 
             int n = 0;
+
             ArrayList<String> idString = new ArrayList<>();
             StringBuilder builder1 = new StringBuilder();
             if (stat.getIds()!=null) {
             for (Identifier i: stat.getIds()) {
-                idString.add(i.getId());
+                String valore = typeVisit(i);
+                if (valore.contains("string")) {
+                    idString.add(i.getId());
+                }else {
+                    idString.add(estraiIdentificatori(i.getId(),outParam));
+                }
             }}
             if(stat.getExprs()!=null) {
                 for (ExprOp e : stat.getExprs()) {
 
                     if (e instanceof FunCallOp) {
                         String t = (String) e.accept(this);
+
                         Row r = currentScope.lookUp(((FunCallOp) e).getId().getId());
                         Function f = (Function) r.getNode();
                         if (f.getTypes().size()>1) {
@@ -526,6 +559,9 @@ public class CodeGenerator implements Visitor {
                     }else {
                         assignBuilder.append(" = ");
                     String t = (String) e.accept(this);
+                    if (e instanceof Identifier) {
+                        t = estraiIdentificatori(t,outParam);
+                    }
                     builder1.append(idString.get(n));
 
                     assignBuilder.append(t);
@@ -676,18 +712,26 @@ public class CodeGenerator implements Visitor {
         tipo = convertType(decls.getType().getType());
 
         ArrayList<Identifier> ids = decls.getIds();
+        if (tipo.equals("char*")) {
         if (!ids.isEmpty()) {
 
             writer.write(tipo + " " + ids.get(0).getId());
+            writer.write(" = (char *)malloc(100 * sizeof(char));\n");
+        }
+        for (int i = 1; i < ids.size(); i++) {
+            writer.write(tipo + " " + ids.get(i).getId());
+            writer.write(" = (char *)malloc(100 * sizeof(char));\n");
+        }}else {
+            if (!ids.isEmpty()) {
+                writer.write(tipo + " " + ids.get(0).getId());
+            }
+            for (int i = 1; i < ids.size(); i++) {
+                writer.write(", " + ids.get(i).getId());
+            }
+            writer.write(";\n");
         }
 
-        for (int i = 1; i < ids.size(); i++) {
-            writer.write(", " + ids.get(i).getId());
-        }
-        if (tipo.equals("char*")) {
-            writer.write(" = (char *)malloc(100 * sizeof(char))");
-        }
-        writer.write(";\n");
+
 
         return null;
     }
@@ -743,7 +787,7 @@ public class CodeGenerator implements Visitor {
         }
 
         if (function.getTypes().size()==1) {
-            writer.write(convertType(function.getFunc().get(0).getType().getType()) + function.getId().getId() + "(");
+            writer.write(convertType(function.getFunc().get(0).getType().getType()) +" "+ function.getId().getId() + "(");
         }
         // Gestisci i parametri della funzione
         if (function.getFunc() != null && !function.getFunc().isEmpty()) {
@@ -756,36 +800,54 @@ public class CodeGenerator implements Visitor {
         }
 
         writer.write(") {\n");
+        //caso in cui ci sono piu tipi da restituire
+        if (function.getTypes().size()>1) {
         writer.write("    " + function.getId().getId() + "_struct s" + i + ";\n");
+            if (function.getBody() != null) {
+                function.getBody().accept(this);
+            }
+            for (Stat s : function.getBody().getStats()) {
+                if (s.getValue()!=null) {
+                    if (s.getValue().equals("RETURN")) {
+                        // Ottieni tutte le espressioni di ritorno e parametri della funzione
+                        List<ExprOp> returnExprs = s.getExprs();
+                        List<Type> returnTypes = function.getTypes();
+
+                        // Assumendo che il numero di espressioni di ritorno e tipi sia lo stesso
+                        for (int j = 0; j < returnExprs.size(); j++) {
+                            ExprOp returnExpr = returnExprs.get(j);
+                            Type returnType = returnTypes.get(j);
+
+                            String exprString = (String) returnExpr.accept(this);
+                            String fieldName = "result" + (j + 1);  // Aggiungi 1 per iniziare da "result1"
+
+                            writer.write("    s" + i + "." + fieldName + " = " + exprString + ";\n");
+                        }
+                    }}
+            }
+            writer.write("return s"+i +";\n");
+            writer.write("}\n");
+            return null;
+        }
 
         if (function.getBody() != null) {
             function.getBody().accept(this);
         }
-        for (Stat s : function.getBody().getStats()) {
+
+        for(Stat s: function.getBody().getStats()) {
             if (s.getValue()!=null) {
-            if (s.getValue().equals("RETURN")) {
-                // Ottieni tutte le espressioni di ritorno e parametri della funzione
-                List<ExprOp> returnExprs = s.getExprs();
-                List<Type> returnTypes = function.getTypes();
-
-                // Assumendo che il numero di espressioni di ritorno e tipi sia lo stesso
-                for (int j = 0; j < returnExprs.size(); j++) {
-                    ExprOp returnExpr = returnExprs.get(j);
-                    Type returnType = returnTypes.get(j);
-
-                    String exprString = (String) returnExpr.accept(this);
-                    String fieldName = "result" + (j + 1);  // Aggiungi 1 per iniziare da "result1"
-
-                    writer.write("    s" + i + "." + fieldName + " = " + exprString + ";\n");
-                }
-            }} else {
-                continue;
-            }
+                if (s.getValue().equals("RETURN")) {
+                    // Ottieni tutte le espressioni di ritorno e parametri della funzione
+                    List<ExprOp> returnExprs = s.getExprs();
+                    if (returnExprs.get(0) instanceof Identifier){
+                    writer.write("return "+((Identifier) returnExprs.get(0)).getId() +";\n"); }
+                    else if(returnExprs.get(0) instanceof ConstOp) {
+                        writer.write("return "+((ConstOp) returnExprs.get(0)).getValue() +";\n");
+                    }
+                }}
         }
 
-        writer.write("return s"+i +";\n");
         writer.write("}\n");
-
         currentScope = function.getTable().getFather();
         return null;
     }
@@ -855,7 +917,7 @@ Procedure pMain = null;
             procedure.getBody().accept(this);
         outParam.clear();
         }
-
+        outParam.clear();
         writer.write("}\n");
         return null;
     }
@@ -864,6 +926,7 @@ Procedure pMain = null;
     public Object visit(Program program) throws Exception {
         writer = new FileWriter(outFile);
         addBaseLibraries();
+        addHelperFunctions();
         currentScope = program.getTable();
 
 
@@ -913,5 +976,58 @@ Procedure pMain = null;
         writer.write("#include <unistd.h>\n");
         writer.write("#include <stdbool.h>\n");
         writer.write("#define MAXCHAR 512\n");
+    }
+
+
+
+    public void addHelperFunctions() throws IOException {
+        writer.write("char* integer_to_str(int i){\n");
+        writer.write("int length= snprintf(NULL,0,\"%d\",i);\n");
+        writer.write("char* result=malloc(length+1);\n");
+        writer.write("snprintf(result,length+1,\"%d\",i);\n");
+        writer.write("return result;\n");
+        writer.write("}\n");
+
+        writer.write("char* real_to_str(float i){\n");
+        writer.write("int length= snprintf(NULL,0,\"%f\",i);\n");
+        writer.write("char* result=malloc(length+1);\n");
+        writer.write("snprintf(result,length+1,\"%f\",i);\n");
+        writer.write("return result;\n");
+        writer.write("}\n");
+
+        writer.write("char* char_to_str(char i){\n");
+        writer.write("int length= snprintf(NULL,0,\"%c\",i);\n");
+        writer.write("char* result=malloc(length+1);\n");
+        writer.write("snprintf(result,length+1,\"%c\",i);\n");
+        writer.write("return result;\n");
+        writer.write("}\n");
+
+        writer.write("char* bool_to_str(bool i){\n");
+        writer.write("int length= snprintf(NULL,0,\"%d\",i);\n");
+        writer.write("char* result=malloc(length+1);\n");
+        writer.write("snprintf(result,length+1,\"%d\",i);\n");
+        writer.write("return result;\n");
+        writer.write("}\n");
+
+        writer.write("char* str_concat(char* str1, char* str2){\n");
+        writer.write("char* result=malloc(sizeof(char)*MAXCHAR);\n");
+        writer.write("result=strcat(result,str1);\n");
+        writer.write("result=strcat(result,str2);\n");
+        writer.write("return result;}\n");
+
+        writer.write("\n");
+        writer.write("char* read_str(){\n");
+        writer.write("char* str=malloc(sizeof(char)*MAXCHAR);\n");
+        writer.write("scanf(\"%s\",str);\n");
+        writer.write("return str;}\n");
+
+        writer.write("\n");
+        writer.write("int str_to_bool(char* expr){\n");
+        writer.write("int i=0;\n");
+        writer.write("if ( (strcmp(expr, \"true\")==0) || (strcmp(expr, \"1\"))==0 )\n");
+        writer.write("i=1;\n");
+        writer.write("if ( (strcmp(expr, \"false\")==0) || (strcmp(expr, \"0\"))==0 )\n");
+        writer.write("i=0;\n");
+        writer.write("return i;}\n");
     }
 }
