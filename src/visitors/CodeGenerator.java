@@ -525,6 +525,11 @@ public class CodeGenerator implements Visitor {
                 String valore = typeVisit(i);
                 if (valore.contains("string")) {
                     idString.add(i.getId());
+                    for (String r : daReallocare) {
+                        if (r.equals(i.getId())) {
+                            writer.write("free("+r+");\n");
+                        }
+                    }
                 }else {
                     idString.add(estraiIdentificatori(i.getId(),outParam));
                 }
@@ -549,22 +554,40 @@ public class CodeGenerator implements Visitor {
                             nStruct++;
                         }else {
                             if (stat.getExprs().size()==1) {
+                                boolean isChar = false;
+                                for (String reall : daReallocare) {
+                                    if (reall.equals(idString.get(0))) {
+                                        isChar = true;
+                                        builder1.append(idString.get(0));
+                                        assignBuilder.append(" = ");
+                                        assignBuilder.append("strdup("+t+")\n");
+                                    }
+                                }
+                                if (!isChar) {
                                 builder1.append(idString.get(0));
                                 assignBuilder.append(" = ");
                                 assignBuilder.append(t);
-
-                            }
+                            }}
 
                         }
                     }else {
                         assignBuilder.append(" = ");
                     String t = (String) e.accept(this);
+
                     if (e instanceof Identifier) {
                         t = estraiIdentificatori(t,outParam);
                     }
-                    builder1.append(idString.get(n));
 
-                    assignBuilder.append(t);
+                    boolean isChar = false;
+                    builder1.append(idString.get(n));
+                        for (String r : daReallocare) {
+                            if (r.equals(idString.get(n))) {
+                                isChar = true;
+                                assignBuilder.append("strdup("+t+")");
+                            }
+                        }
+                        if (!isChar) {
+                    assignBuilder.append(t);}
                     idString.remove(0);
                     n++;
                     }
@@ -677,6 +700,7 @@ public class CodeGenerator implements Visitor {
         currentScope = tmp;
         return null;
     }
+    ArrayList<String> daReallocare = new ArrayList<>();
     @Override
     public Object visit(Decls decls) throws Exception {
         String tipo = null;
@@ -701,10 +725,13 @@ public class CodeGenerator implements Visitor {
                 String c = iter3.next();
 
 
-                if (t.equals("string_const") || t.equals("integer_const") || t.equals("real_const") || t.equals("boolean")) {
+                if ( t.equals("integer_const") || t.equals("real_const") || t.equals("boolean")) {
 
 
                     writer.write(convertType(t) + " " + id + "=" + c + ";\n");
+                }else if (t.equals("string_const") ) {
+                    writer.write(convertType(t) + " " + id + "=" + "strdup("+c+")" + ";\n");
+                    daReallocare.add(id);
                 }
             }
             return null;
@@ -848,6 +875,7 @@ public class CodeGenerator implements Visitor {
         }
 
         writer.write("}\n");
+        daReallocare.clear();
         currentScope = function.getTable().getFather();
         return null;
     }
@@ -918,6 +946,7 @@ Procedure pMain = null;
         outParam.clear();
         }
         outParam.clear();
+        daReallocare.clear();
         writer.write("}\n");
         return null;
     }
