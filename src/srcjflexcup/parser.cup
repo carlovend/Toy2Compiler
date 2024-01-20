@@ -200,7 +200,7 @@ Body ::= VarDecl:vardecl Body:body {:
 :};
 
 
-Stat ::= Ids:ids ASSIGN Exprs:exprs SEMI{:RESULT = new Stat(ids,exprs);:}
+Stat ::= Ids:ids ASSIGN Exprs:exprs SEMI{:RESULT = new Stat("ASSIGN",ids,exprs);:}
 	 | ProcCall:procCall  SEMI{:RESULT = procCall;:}
 	 | RETURN Exprs:exprs SEMI{:RESULT = new Stat("RETURN",exprs);:}
 	 | WRITE IOArgs:Ioargs SEMI{:RESULT = new Stat("WRITE",Ioargs);:}
