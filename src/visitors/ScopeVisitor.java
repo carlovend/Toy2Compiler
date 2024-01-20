@@ -85,19 +85,17 @@ public class ScopeVisitor implements Visitor{
         SymbolTable tmp = father;
         while (father!=null) {
         if (father.lookUp(identifier.getId())!=null) {
-            //TODO FARE Exception
             return true;
         }else {
             father = father.getFather();}
         }
         father = tmp;
-        throw new Exception("Nessuna dichiarazione");
+        throw new Exceptions.NoDeclaration(identifier.getId());
     }
 
     @Override
     public Object visit(IoArgs ioArgs) {
 
-        //TODO SE è WRITE O READ CONTROLLARE SE FARIABILE GIà DICHIARATA
         return null;
     }
 
@@ -200,7 +198,7 @@ public class ScopeVisitor implements Visitor{
                 for (ExprOp exprOp: stat.getExprs()) {
 
                     if (exprOp.isDollar()  && !exprOp.isId()) {
-                        throw new Exception("SONO CONCESSI SOLO ID");
+                        throw new Exceptions.OnlyId();
                     }
                     exprOp.accept(this);
                 }
@@ -210,9 +208,7 @@ public class ScopeVisitor implements Visitor{
 
         if (!(stat instanceof WhileOp) && !(stat instanceof IfOp) && !(stat instanceof ElifOp) && !(stat instanceof ProcCallOp)) {
 
-            for (Identifier i: stat.getIds()) {
-                i.accept(this);
-            }
+
             if (!stat.getExprs().isEmpty()) {
                 if (stat.getExprs().get(0) instanceof FunCallOp) {
                     stat.getExprs().get(0).accept(this);
@@ -314,7 +310,7 @@ public class ScopeVisitor implements Visitor{
 
 
                 FieldType.TypeVar t = new FieldType.TypeVar(type);
-                Row row = new Row(id.getId(),Decls.class,t,"");
+                Row row = new Row(id.getId(),Decls.class,t,type);
                 rows.add(row);
             }
         }
@@ -326,8 +322,9 @@ public class ScopeVisitor implements Visitor{
     @Override
     public Object visit(FuncParams funcParams) {
         ArrayList<Row> rows = new ArrayList<>();
+        System.out.println(funcParams.getType().getType());
         if (funcParams != null) {
-            Row r = new Row(funcParams.getId().getId(),FuncParams.class,new FieldType.TypeVar(funcParams.getType().getType()),"");
+            Row r = new Row(funcParams.getId().getId(),FuncParams.class,new FieldType.TypeVar(funcParams.getType().getType()),funcParams.getType().getType());
             rows.add(r);
         }
         return rows;

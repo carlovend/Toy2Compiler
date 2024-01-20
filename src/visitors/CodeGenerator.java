@@ -203,7 +203,8 @@ public class CodeGenerator implements Visitor {
             String argumentCode = (String) argument.accept(this);
             String t = ((ConstOp) argument).getValue().replace("\"","");
             builder.append(argumentCode);
-            builder.append(",");
+            if (funCallOp.getExprsList().size()>1) {
+            builder.append(",");}
         }
             if (argument instanceof BinaryOP){
                 String res = (String) argument.accept(this);
@@ -512,7 +513,7 @@ public class CodeGenerator implements Visitor {
 
 
 
-        if (!(stat instanceof WhileOp) && !(stat instanceof IfOp) && !(stat instanceof ElifOp) && !(stat instanceof ProcCallOp)&&stat.getValue()==null) {
+        if (stat.getValue()!=null && stat.getValue().equals("ASSIGN")) {
             ArrayList<String> tipi = new ArrayList<>();
             StringBuilder assignBuilder = new StringBuilder();
 
@@ -552,7 +553,22 @@ public class CodeGenerator implements Visitor {
                                 idString.subList(0, f.getTypes().size()).clear();
                             }
                             nStruct++;
-                        }else {
+                        } else if (f.getTypes().size()==1) {
+                            boolean isChar = false;
+                            for (String reall : daReallocare) {
+                                if (reall.equals(idString.get(0))) {
+                                    isChar = true;
+                                    builder1.append(idString.get(0));
+                                    assignBuilder.append(" = ");
+                                    assignBuilder.append("strdup("+t+")\n");
+                                }
+                            }
+                            if (!isChar) {
+                                builder1.append(idString.get(0));
+                                assignBuilder.append(" = ");
+                                assignBuilder.append(t);
+                            }
+                        } else {
                             if (stat.getExprs().size()==1) {
                                 boolean isChar = false;
                                 for (String reall : daReallocare) {
@@ -580,6 +596,7 @@ public class CodeGenerator implements Visitor {
 
                     boolean isChar = false;
                     builder1.append(idString.get(n));
+
                         for (String r : daReallocare) {
                             if (r.equals(idString.get(n))) {
                                 isChar = true;
@@ -590,13 +607,16 @@ public class CodeGenerator implements Visitor {
                     assignBuilder.append(t);}
                     idString.remove(0);
                     n++;
-                    }
 
+                    }
+                    writer.write(String.valueOf(builder1));
+                    if (assignBuilder.length()!=0) {
+                        writer.write(assignBuilder +";\n");}
+                    builder1.setLength(0);
+                    assignBuilder.setLength(0);
                 }
 
-                writer.write(String.valueOf(builder1));
-                if (assignBuilder.length()!=0) {
-                writer.write(assignBuilder +";\n");}
+
             }
 
         }

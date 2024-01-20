@@ -18,7 +18,7 @@ public class Stat extends DefaultMutableTreeNode implements Visitable {
     private ProcCallOp procCallOp;
     private IoArgs ioArgs;
     private String value;
-    public Stat(ArrayList<Identifier> ids, ArrayList<ExprOp>exprs) {
+    public Stat(String value, ArrayList<Identifier> ids, ArrayList<ExprOp>exprs) {
         super("Assign");
         for (Identifier i:ids) {
             super.add(i);
@@ -26,7 +26,7 @@ public class Stat extends DefaultMutableTreeNode implements Visitable {
         for (ExprOp e : exprs) {
             super.add(e);
         }
-
+        this.value = value;
         this.exprs = exprs;
         this.ids = ids;
     }
