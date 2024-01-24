@@ -7,6 +7,7 @@ import nodi.statements.ElifOp;
 import nodi.statements.IfOp;
 import nodi.statements.Stat;
 import nodi.statements.WhileOp;
+import tables.FieldType;
 import tables.Row;
 import tables.SymbolTable;
 
@@ -86,6 +87,21 @@ public class CodeGenerator implements Visitor {
 
         expr1 = (String) binaryOP.getExpr1().accept(this);
         expr2 = (String) binaryOP.getExpr2().accept(this);
+
+        if (binaryOP.getExpr1() instanceof Identifier) {
+            binaryOP.getExpr1().setType(typeVisit((Identifier) binaryOP.getExpr1()));
+        }
+        if (binaryOP.getExpr2() instanceof Identifier) {
+            binaryOP.getExpr2().setType(typeVisit((Identifier) binaryOP.getExpr2()));
+        }
+
+        if (binaryOP.getExpr1() instanceof FunCallOp) {
+            binaryOP.getExpr1().setType(typeVisit(((FunCallOp) binaryOP.getExpr1()).getId()));
+        }
+        if (binaryOP.getExpr2() instanceof FunCallOp) {
+            binaryOP.getExpr2().setType(typeVisit(((FunCallOp) binaryOP.getExpr2()).getId()));
+        }
+
         String tipoOperazione = binaryOP.getOp();
         if (binaryOP.getExpr1() instanceof Identifier) {
             expr1 = estraiIdentificatori(((Identifier) binaryOP.getExpr1()).getId(),outParam);
@@ -93,6 +109,8 @@ public class CodeGenerator implements Visitor {
         if (binaryOP.getExpr2() instanceof Identifier) {
             expr2 = estraiIdentificatori(((Identifier) binaryOP.getExpr2()).getId(),outParam);
         }
+
+        System.out.println(binaryOP.getExpr2().getType());
         if (tipoOperazione.equals("plusOp") || tipoOperazione.equals("minusOp") || tipoOperazione.equals("timesOp") || tipoOperazione.equals("divOp")) {
             if (binaryOP.getExpr1().getType().contains("string")&&binaryOP.getExpr2().getType().contains("string")) {
                 expr1 = "str_concat("+expr1+","+expr2+")";
@@ -206,9 +224,13 @@ public class CodeGenerator implements Visitor {
             if (funCallOp.getExprsList().size()>1) {
             builder.append(",");}
         }
-            if (argument instanceof BinaryOP){
+            else if (argument instanceof BinaryOP){
                 String res = (String) argument.accept(this);
 
+                builder.append(res);
+            }
+            else {
+                String res = (String) argument.accept(this);
                 builder.append(res);
             }
         }}
@@ -252,8 +274,35 @@ public class CodeGenerator implements Visitor {
 
     @Override
     public Object visit(ProcCallOp procCallOp) throws Exception {
+        writer.write(procCallOp.getId().getId() + "(");
+        if (procCallOp.getExprsList() != null) {
+            int exprCount = procCallOp.getExprsList().size();
+            Row out = currentScope.lookUp(procCallOp.getId().getId());
+            FieldType.TypeFunction typefield = (FieldType.TypeFunction) out.getType();
+            ArrayList<String> normalOutParams = typefield.getOutputParams();
+            for (int i = 0; i < exprCount; i++) {
+                ExprOp e = procCallOp.getExprsList().get(i);
+                String t = (String) e.accept(this);
+                String tipo = "";
+                if (e instanceof Identifier) {
+                tipo = typeVisit((Identifier) e);
+                System.out.println(tipo);
+                }
+                if (normalOutParams.get(i).equals("NORMAL")||tipo.contains("string")) {
+                    writer.write(t);
+                }else {
+                    writer.write("&"+t);
+                }
+                // Verifica se l'iterazione corrente non è l'ultima
+                if (i < exprCount - 1) {
+                    writer.write(",");
+                }
+            }
+        }
+        writer.write(");\n");
         return null;
     }
+
     ArrayList<String> outParam = new ArrayList<>();
     @Override
     public Object visit(ProcParams procParams) {
@@ -332,7 +381,18 @@ public class CodeGenerator implements Visitor {
     @Override
     public Object visit(Stat stat) throws Exception {
         StringBuilder builder = new StringBuilder();
+
+        if (stat.getValue().equals("RETURN")) {
+            for (ExprOp e : stat.getExprs()) {
+                String t = (String) e.accept(this);
+
+                writer.write("return " + t+ ";\n" );
+            }
+
+        }
+
         if (stat.getValue() != null && stat.getValue().equals("WRITE")) {
+            String toAppend = "";
             if (stat.getExprs() != null) {
                 // Inizia la costruzione della printf
                 builder.append("printf(\"");
@@ -367,9 +427,25 @@ public class CodeGenerator implements Visitor {
                             builder.append("%f ");}
                         if (e.getType().equals("string")) {
                             builder.append("%s ");}}
+                    } else if (e instanceof FunCallOp) {
+                            Row r = currentScope.lookUp(((FunCallOp) e).getId().getId());
+                            FieldType.TypeFunction type = (FieldType.TypeFunction) r.getType();
+                            String tipo = type.getOutputParams().get(0);
+                            if (tipo.contains("integer")) {
+                                builder.append("%d ");
+                            }
+                        if (tipo.contains("real")) {
+                            builder.append("%f ");
+                        }
+                        if (tipo.contains("string")) {
+                            builder.append("%s ");
+                        }
+
+
                     } else {
                         // Altri casi di espressioni
-                        String toAppend = (String) e.accept(this);
+                        System.out.println("sassi");
+                         toAppend = (String) e.accept(this);
                         builder.append(toAppend).append(" ");
                     }
                 }
@@ -381,7 +457,7 @@ public class CodeGenerator implements Visitor {
                 }else {
                 // Aggiungi gli argomenti per la printf
                 for (ExprOp e : stat.getExprs()) {
-                    if (e instanceof Identifier || e instanceof BinaryOP) {
+                    if (e instanceof Identifier || e instanceof BinaryOP|| e instanceof FunCallOp) {
                         builder.append(", ").append((String) e.accept(this));
                     }
                 }
@@ -421,7 +497,22 @@ public class CodeGenerator implements Visitor {
                         String binaryExpr = (String) e.accept(this);
                         writer.append("");
                         builder.append("%d ");
-                    } else {
+                    }
+                    else if (e instanceof FunCallOp) {
+                        Row r = currentScope.lookUp(((FunCallOp) e).getId().getId());
+                        FieldType.TypeFunction type = (FieldType.TypeFunction) r.getType();
+                        String tipo = type.getOutputParams().get(0);
+                        if (tipo.contains("integer")) {
+                            builder.append("%d ");
+                        }
+                        if (tipo.contains("real")) {
+                            builder.append("%f ");
+                        }
+                        if (tipo.contains("string")) {
+                            builder.append("%s ");
+                        }
+
+                    }else {
                         // Altri casi di espressioni
                         String toAppend = (String) e.accept(this);
                         builder.append(toAppend).append(" ");
@@ -435,7 +526,7 @@ public class CodeGenerator implements Visitor {
                 }else {
                     // Aggiungi gli argomenti per la printf
                     for (ExprOp e : stat.getExprs()) {
-                        if (e instanceof Identifier || e instanceof BinaryOP) {
+                        if (e instanceof Identifier || e instanceof BinaryOP|| e instanceof FunCallOp) {
                             builder.append(", ").append((String) e.accept(this));
                         }
                     }
@@ -694,8 +785,10 @@ public class CodeGenerator implements Visitor {
                 Collections.reverse(reverse);
                 for (Stat s : reverse) {
                     if (s.getValue()!=null) {
+                        //Row r = currentScope.lookUp(currentScope.getScope());
+
                     if (s.getValue().equals("RETURN")) {
-                        continue;
+                       // s.accept(this);
                     }
 
                 }s.accept(this);}
@@ -851,7 +944,11 @@ public class CodeGenerator implements Visitor {
         if (function.getTypes().size()>1) {
         writer.write("    " + function.getId().getId() + "_struct s" + i + ";\n");
             if (function.getBody() != null) {
-                function.getBody().accept(this);
+                if (function.getBody().getDecls()!=null) {
+                    for (Decls d : function.getBody().getDecls()) {
+                        d.accept(this);
+                    }
+                }
             }
             for (Stat s : function.getBody().getStats()) {
                 if (s.getValue()!=null) {
@@ -889,7 +986,7 @@ public class CodeGenerator implements Visitor {
                     if (returnExprs.get(0) instanceof Identifier){
                     writer.write("return "+((Identifier) returnExprs.get(0)).getId() +";\n"); }
                     else if(returnExprs.get(0) instanceof ConstOp) {
-                        writer.write("return "+((ConstOp) returnExprs.get(0)).getValue() +";\n");
+                        //writer.write("return "+((ConstOp) returnExprs.get(0)).getValue() +";\n");
                     }
                 }}
         }

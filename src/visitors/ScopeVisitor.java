@@ -446,12 +446,6 @@ public class ScopeVisitor implements Visitor{
         FieldType.TypeFunction t = new FieldType.TypeFunction();
 
         father = symbolTable;
-        if (program.getProc()!=null) {
-            Row proc = null;
-            proc = (Row) program.getProc().accept(this);
-
-            symbolTable.addRow(proc);
-        }
 
         if (program.getIter().size()>0) {
 
@@ -469,6 +463,15 @@ public class ScopeVisitor implements Visitor{
 
             }
         }
+
+
+        if (program.getProc()!=null) {
+            Row proc = null;
+            proc = (Row) program.getProc().accept(this);
+
+            symbolTable.addRow(proc);
+        }
+
 
         return null;
     }
