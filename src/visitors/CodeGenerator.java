@@ -140,7 +140,7 @@ public class CodeGenerator implements Visitor {
             espressione = expr1 + tipoEspressione + expr2;
             return espressione;
         }
-        System.out.println(binaryOP.getExpr1().getType()+"culi"+tipoOperazione);
+
         if (tipoOperazione.equals("gtOp") || tipoOperazione.equals("geOp") || tipoOperazione.equals("ltOp") || tipoOperazione.equals("leOp") || tipoOperazione.equals("eqOp") || tipoOperazione.equals("neOp")) {
             if (tipoOperazione.equals("eqOp")&&(binaryOP.getExpr1().getType().contains("string")||binaryOP.getExpr2().getType().contains("string"))) {
                 return espressione = "strcmp("+expr1+","+expr2+")==0";
@@ -449,7 +449,6 @@ public class CodeGenerator implements Visitor {
 
                     } else {
                         // Altri casi di espressioni
-                        System.out.println("sassi");
                          toAppend = (String) e.accept(this);
                         builder.append(toAppend).append(" ");
                     }
@@ -989,7 +988,6 @@ public class CodeGenerator implements Visitor {
                             Type returnType = returnTypes.get(j);
 
                             String exprString = (String) returnExpr.accept(this);
-                            System.out.println(exprString+"sassi");
                             String fieldName = "result" + (j + 1);  // Aggiungi 1 per iniziare da "result1"
 
                             writer.write("    s" + i + "." + fieldName + " = " + exprString + ";\n");

@@ -322,7 +322,6 @@ public class ScopeVisitor implements Visitor{
     @Override
     public Object visit(FuncParams funcParams) {
         ArrayList<Row> rows = new ArrayList<>();
-        System.out.println(funcParams.getType().getType());
         if (funcParams != null) {
             Row r = new Row(funcParams.getId().getId(),FuncParams.class,new FieldType.TypeVar(funcParams.getType().getType()),funcParams.getType().getType());
             rows.add(r);

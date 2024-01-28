@@ -401,7 +401,7 @@ public class TypeVisitor implements Visitor {
 
         String typeExpr = (String) unaryOp.getExprOp().accept(this);
         String type = unaryOp.getType();
-        System.out.println(typeExpr);
+
         if (type.equals("unaryMinusOp")) {
             for (String[] c : combinazioniMinus) {
                 if (typeExpr.contains(c[0])) {
@@ -517,9 +517,7 @@ public class TypeVisitor implements Visitor {
                         }
                         ArrayList<String> tmp = (ArrayList<String>) f.accept(this);
                         tipiDestra.addAll(tmp);
-                        for (String t : tipiDestra) {
-                            System.out.println(t);
-                        }
+
                         nDestra = nDestra+tipiDestra.size();
                     }
                     else{
@@ -686,7 +684,6 @@ public class TypeVisitor implements Visitor {
         }
 
         ArrayList<String> returntipi = new ArrayList<>();
-        System.out.println("salve");
         for (Stat s : function.getBody().getStats()){
         exprs = s.getExprs();
         if (exprs!=null && s.getValue().equals("RETURN")) {
@@ -704,16 +701,13 @@ public class TypeVisitor implements Visitor {
             }
             Iterator<String> iter1 = returnType.iterator();
             Iterator<String> iter2 = returntipi.iterator();
-            System.out.println( "coaaiaoao");
+
             if (returntipi.size()!= returnType.size()) {
-                System.out.println(returntipi.size());
-                System.out.println(+ returnType.size()+ "coaaiaoao");
                 throw new RuntimeException("Errore il numero di parametri di ritorno non coincide");
             }
             while (iter1.hasNext()&&iter2.hasNext()) {
                 String t1 = iter1.next();
                 String t2 = iter2.next();
-                System.out.println(t1+t2 + "coaaiaoao");
                 if (!t2.contains(t1)) {
                     throw new Exceptions.ErrorInTypeReturn();
                 }
