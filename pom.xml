@@ -65,7 +65,7 @@
               <goal>generate</goal>
             </goals>
             <configuration>
-              <outputDirectory>src/parser_lexer</outputDirectory>
+              <outputDirectory>src</outputDirectory>
               <lexDefinitions>
                 <lexDefinition>src/srcjflexcup/lexer.flex</lexDefinition>
               </lexDefinitions>

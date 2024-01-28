@@ -2,18 +2,15 @@ package main.java.org.example;
 
 
 
-import java_cup.runtime.Symbol;
+import java_cup.runtime.Scanner;
+
 import nodi.Program;
 import parser_lexer.Lexer;
 import parser_lexer.parser;
-import parser_lexer.sym;
-import tables.Row;
-import tables.SymbolTable;
 import visitors.CodeGenerator;
 import visitors.ScopeVisitor;
 import visitors.TypeVisitor;
 
-import javax.swing.*;
 import javax.swing.tree.DefaultMutableTreeNode;
 import java.io.*;
 
@@ -61,7 +58,7 @@ public class App {
         Lexer scanner = new Lexer(reader);
         File prova = new File("src/main/java/org/example/speriamo.c");
 
-        parser p = new parser(scanner);
+        parser p = new parser((Scanner) scanner);
 
 
        /* while (!scanner.yyatEOF()) {

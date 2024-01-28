@@ -13,7 +13,7 @@
    of "hello" with "hello <name>!". There is a sample input file
    "sample.inp" provided in this directory
 */
-
+package parser_lexer;
 import java_cup.runtime.*;
 import java.util.HashMap;
 
@@ -39,7 +39,12 @@ StringError = " [^"]
 CommentError = "%" [^"%"]
 Error = [^]
 Id = [A-Za-z_][A-Za-z0-9_]*
+%state BLK_COMMENT
+
 %{
+private boolean firstCharacter = false;
+private int lineUnclosed = 0;
+private StringBuilder stringBuilder = new StringBuilder();
     private Symbol symbol(int type) {
         return new Symbol(type, yyline, yycolumn);
     }
@@ -110,12 +115,28 @@ Id = [A-Za-z_][A-Za-z0-9_]*
     "\\"  { return symbol(sym.ENDVAR);}
     "@" { return symbol(sym.REF); }
     [A-Za-z]([A-Za-z_]|[0-9])* { return symbol(sym.ID, yytext()); }
+    "%" {yybegin(BLK_COMMENT);}
 }
 
 <YYINITIAL> {
 
       {WhiteSpace}                   { /* ignore */ }
       {Comments}                     { /* ignore */ }
+}
+<BLK_COMMENT> {
+    "%" {
+          firstCharacter = false;
+          yybegin(YYINITIAL);
+    }
+    [^%]* {
+            if(!firstCharacter) {
+                lineUnclosed = yyline+1;
+                firstCharacter = true;
+            }
+            }
+    <<EOF>> {
+            throw new Error("Errore: Commento non chiuso correttamente alla linea:" + lineUnclosed);
+        }
 }
 
 [^]  {
