@@ -304,6 +304,9 @@ public class ScopeVisitor implements Visitor{
                 if (decls.getType()!=null) {
                     type = decls.getType().getType();
                 } else if (decls.getType1().equals("Assign")) {
+                    if (decls.getIds().size()!=decls.getConsts().size()) {
+                        throw new RuntimeException("Errore nell assign il numero dell assegnazione non coincide con gli id");
+                    }
                         type = decls.getConsts().get(c).getType();
                         c++;
                 }

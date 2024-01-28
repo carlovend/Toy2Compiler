@@ -366,9 +366,7 @@ public class TypeVisitor implements Visitor {
                     if (tipo1.contains("integer")) {
                         tipo1 = "integer";
                     }
-                    if (tipo1.equals("integer")&&tipo2.equals("real")) {
-                        continue;
-                    }
+
                     if (!tipo1.equals(tipo2)) {
                         throw new Exceptions.NonMatchingTypeParameter();
                     }
@@ -405,10 +403,10 @@ public class TypeVisitor implements Visitor {
 
         String typeExpr = (String) unaryOp.getExprOp().accept(this);
         String type = unaryOp.getType();
-
+        System.out.println(typeExpr);
         if (type.equals("unaryMinusOp")) {
             for (String[] c : combinazioniMinus) {
-                if (typeExpr.equals(c[0])) {
+                if (typeExpr.contains(c[0])) {
                     unaryOp.setType(c[1]);
                     return c[1];
                 }
@@ -417,7 +415,7 @@ public class TypeVisitor implements Visitor {
         }
         if (type.equals("notOp")) {
             for (String[] c: combinazioniNot) {
-                if (typeExpr.equals(c[0])) {
+                if (typeExpr.contains(c[0])) {
                     unaryOp.setType(c[1]);
                     return c[1];
                 }
@@ -444,6 +442,9 @@ public class TypeVisitor implements Visitor {
     public Object visit(IfOp ifOp) throws Exception {
         SymbolTable tmp = currentScope;
         String condizione = (String) ifOp.getExprOpStat().accept(this);
+        if (!condizione.equals("boolean")) {
+            throw new RuntimeException("La condizione non è un bool");
+        }
         currentScope = ifOp.getTable();
 
         ifOp.getBodyOpIf().accept(this);
@@ -480,11 +481,10 @@ public class TypeVisitor implements Visitor {
                     return stat.getExprs();
                 }
                 return null;
-            }if (stat.getValue().equals("WRITE")){
+            }if (stat.getValue().equals("WRITE")||stat.getValue().equals("WRITERETURN")){
                 if (stat.getExprs()!=null) {
                     for (ExprOp e : stat.getExprs()) {
                         e.accept(this);
-
                     }
 
                 }
@@ -519,12 +519,21 @@ public class TypeVisitor implements Visitor {
                         }
                         ArrayList<String> tmp = (ArrayList<String>) f.accept(this);
                         tipiDestra.addAll(tmp);
+                        for (String t : tipiDestra) {
+                            System.out.println(t);
+                        }
                         nDestra = nDestra+tipiDestra.size();
                     }
                     else{
                         String tipo = (String) e.accept(this);
                         tipiDestra.add(tipo);
-                        nDestra = nDestra+1;
+                        if (e instanceof BinaryOP) {
+                            if (nDestra == 0 ){
+                                nDestra = nDestra+1;
+                            }else {
+                            nDestra = nDestra;}
+                        }else {
+                        nDestra = nDestra+1;}
                     }
                 }
 
@@ -679,30 +688,38 @@ public class TypeVisitor implements Visitor {
         }
 
         ArrayList<String> returntipi = new ArrayList<>();
-        if (exprs!=null ) {
-
+        System.out.println("salve");
+        for (Stat s : function.getBody().getStats()){
+        exprs = s.getExprs();
+        if (exprs!=null && s.getValue().equals("RETURN")) {
 
             for (ExprOp e: exprs) {
-                String t = (String) e.accept(this);
                 if (e instanceof FunCallOp) {
                     FieldType.TypeFunction function1= (FieldType.TypeFunction) functionTypes(((FunCallOp) e).getId());
-                    for (String s: function1.getOutputParams()) {
-                        returntipi.add(s);
+                    for (String str: function1.getOutputParams()) {
+                        returntipi.add(str);
                     }
                     continue;
                 }
+                String t = (String) e.accept(this);
                 returntipi.add(t);
             }
-            Iterator<String> iter1 = Arrays.asList(String.valueOf(returnType)).iterator();
-            Iterator<String> iter2 = Arrays.asList(String.valueOf(returntipi)).iterator();
-
+            Iterator<String> iter1 = returnType.iterator();
+            Iterator<String> iter2 = returntipi.iterator();
+            System.out.println( "coaaiaoao");
+            if (returntipi.size()!= returnType.size()) {
+                System.out.println(returntipi.size());
+                System.out.println(+ returnType.size()+ "coaaiaoao");
+                throw new RuntimeException("Errore il numero di parametri di ritorno non coincide");
+            }
             while (iter1.hasNext()&&iter2.hasNext()) {
                 String t1 = iter1.next();
                 String t2 = iter2.next();
-
-                if (!t1.equals(t2)) {
+                System.out.println(t1+t2 + "coaaiaoao");
+                if (!t2.contains(t1)) {
                     throw new Exceptions.ErrorInTypeReturn();
                 }
+            }
             }
         }
 

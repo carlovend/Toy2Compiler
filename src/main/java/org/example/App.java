@@ -26,11 +26,11 @@ public class App {
     }
 
     public static void main(String[] args) throws Exception {
-      /*  FileInputStream stream = new java.io.FileInputStream("src/main/java/org/example/sample.inp");
+      /*  FileInputStream stream = new java.io.FileInputStream("src/main/java/org/example/sample.txt");
         Reader reader = new java.io.InputStreamReader(stream, "UTF-8");
         Lexer scanner = new Lexer(reader);
         Symbol token;
-        File input = new File("src/main/java/org/example/sample.inp");
+        File input = new File("src/main/java/org/example/sample.txt");
         parser p = new parser(new Lexer(new FileReader(input)));
 
         try {
@@ -88,12 +88,14 @@ public class App {
         JScrollPane treeview = new JScrollPane(tree);
         framePannello.add(treeview);
         framePannello.setVisible(true);*/
-
+        String[] slashSplit = args[0].split("/");
+        String fullName = slashSplit[slashSplit.length-1];
+        String fileName = fullName.split(".txt")[0];
+        CodeGenerator.FILE_NAME = fileName + ".c";
         DefaultMutableTreeNode root = (DefaultMutableTreeNode) p.parse().value;
         //tree=new JTree(root);
         ((Program) root).accept(new ScopeVisitor());
         ((Program) root).accept(new TypeVisitor());
-        CodeGenerator.FILE_NAME="speriamo.c";
         ((Program) root).accept(new CodeGenerator());
 
         int a;
