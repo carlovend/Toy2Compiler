@@ -98,7 +98,7 @@ public class App {
 
         int a;}
         catch (Exception e) {
-            System.out.println("Errore nel file: "+CodeGenerator.FILE_NAME+"\n"+e.getMessage());
+            System.err.println("<-------------------ERRORE----------------------> \n : "+CodeGenerator.FILE_NAME+"\n"+e.getMessage());
         }
     }
 
