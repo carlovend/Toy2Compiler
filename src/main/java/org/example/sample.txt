@@ -1,4 +1,14 @@
 
+%
+ Programma esemplificativo del linguaggio Toy2 a volte volutamente ridondante.
+ La sua sintassi deve essere ancora attentamente verificata
+
+ Questo programma calcola e stampa la somma di due numeri, incrementata di 1.
+ Inoltre ne definisce la taglia
+
+ error #49
+%
+
 
 
 % fa somma e restituisce anche la taglia del numero, oltre che il risultato%
@@ -36,7 +46,7 @@ proc main():
 	var valore ^= "nok";\
 
 	valore ^= stampa("la somma di " + a + " e " + b +  " incrementata di "  + c +  " e' " + taglia);
-	valore ^= stampa("ed e' pari a " + risultato);
+	valore ^= stampa();
 
 	<-- "vuoi continuare? (si/no) - inserisci due volte la risposta\n" $(ans) $(ans1) ;
 	while ans = "si" do

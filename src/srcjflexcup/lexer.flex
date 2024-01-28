@@ -31,12 +31,10 @@ import java.util.HashMap;
 
 LineTerminator = \r|\n|\r\n
 WhiteSpace     = {LineTerminator} | [ \t\f]
-Comments = %.*?%
 Number = (\d+(\.\d*)?|\.\d+)([eE][-+]?\d+)?
 RealConst = (\d+\d+)
 StringConst = \"([^\"\\]|\\.)*\"
 StringError = " [^"]
-CommentError = "%" [^"%"]
 Error = [^]
 Id = [A-Za-z_][A-Za-z0-9_]*
 %state BLK_COMMENT
@@ -70,7 +68,6 @@ private StringBuilder stringBuilder = new StringBuilder();
     [0-9]+ { return symbol(sym.INTEGER_CONST, yytext()); }
     [0-9]+(\.[0-9]+)? { return symbol(sym.REAL_CONST, yytext()); }
     {StringError}  { throw new Error("String error at Line " + yyline + ", Column " + yycolumn); }
-    {CommentError}  { throw new Error("Comment error at Line " + yyline + ", Column " + yycolumn); }
     \"([^\"]|\\\"|\\s)*\" { return symbol(sym.STRING_CONST, yytext()); }
     "true" { return symbol(sym.TRUE); }
     "false" { return symbol(sym.FALSE); }
@@ -121,7 +118,7 @@ private StringBuilder stringBuilder = new StringBuilder();
 <YYINITIAL> {
 
       {WhiteSpace}                   { /* ignore */ }
-      {Comments}                     { /* ignore */ }
+
 }
 <BLK_COMMENT> {
     "%" {
