@@ -22,7 +22,8 @@ public class App {
     public App() throws FileNotFoundException, UnsupportedEncodingException {
     }
 
-    public static void main(String[] args) throws Exception {
+    public static void main(String[] args)  {
+        try {
       /*  FileInputStream stream = new java.io.FileInputStream("src/main/java/org/example/sample.txt");
         Reader reader = new java.io.InputStreamReader(stream, "UTF-8");
         Lexer scanner = new Lexer(reader);
@@ -95,7 +96,10 @@ public class App {
         ((Program) root).accept(new TypeVisitor());
         ((Program) root).accept(new CodeGenerator());
 
-        int a;
+        int a;}
+        catch (Exception e) {
+            System.out.println("Errore nel file: "+CodeGenerator.FILE_NAME+"\n"+e.getMessage());
+        }
     }
 
 }
