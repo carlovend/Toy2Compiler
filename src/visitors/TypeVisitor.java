@@ -1,6 +1,6 @@
 package visitors;
 
-import javafx.geometry.Side;
+
 import nodi.*;
 import nodi.expr.*;
 import nodi.statements.ElifOp;
@@ -10,11 +10,9 @@ import nodi.statements.WhileOp;
 import tables.FieldType;
 import tables.Row;
 import tables.SymbolTable;
-
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Iterator;
-import java.util.List;
+
 
 public class TypeVisitor implements Visitor {
 

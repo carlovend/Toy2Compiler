@@ -9,9 +9,6 @@ import nodi.statements.WhileOp;
 import tables.FieldType;
 import tables.Row;
 import tables.SymbolTable;
-
-import java.io.PrintStream;
-import java.lang.reflect.Array;
 import java.util.ArrayList;
 
 public class ScopeVisitor implements Visitor{

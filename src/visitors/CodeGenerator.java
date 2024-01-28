@@ -1,6 +1,6 @@
 package visitors;
 
-import javafx.util.Builder;
+
 import nodi.*;
 import nodi.expr.*;
 import nodi.statements.ElifOp;
@@ -10,14 +10,9 @@ import nodi.statements.WhileOp;
 import tables.FieldType;
 import tables.Row;
 import tables.SymbolTable;
-
-import javax.sound.midi.SysexMessage;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.lang.reflect.Array;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
