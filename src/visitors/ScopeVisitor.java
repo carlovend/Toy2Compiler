@@ -266,7 +266,7 @@ public class ScopeVisitor implements Visitor{
 
              for (Stat s:bodyOp.getStats()) {
                  if (!(s instanceof WhileOp) && !(s instanceof IfOp) && !(s instanceof ElifOp) &&!(s instanceof ProcCallOp)) {
-                     if (s.getIds() != null && !s.getIds().isEmpty() || s.getValue().equals("READ")||s.getValue().equals("WRITE")) {
+                     if (s.getIds() != null && !s.getIds().isEmpty() || s.getValue().equals("READ")||s.getValue().equals("WRITE")||s.getValue().equals("WRITERETURN")) {
                          s.accept(this);
                      }
                  }
