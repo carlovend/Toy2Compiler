@@ -183,7 +183,7 @@ public class ScopeVisitor implements Visitor{
     public Object visit(Stat stat) throws Exception {
 
         if (stat.getValue()!=null) {
-            if (stat.getValue().equals("WRITE")) {
+            if (stat.getValue().equals("WRITE")||stat.getValue().equals("WRITERETURN")) {
                 if (!stat.getExprs().isEmpty()) {
                     for (ExprOp e : stat.getExprs()) {
                         e.accept(this);
