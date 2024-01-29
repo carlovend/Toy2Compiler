@@ -428,7 +428,9 @@ public class TypeVisitor implements Visitor {
     public Object visit(ElifOp elifOp) throws Exception {
         SymbolTable tmp = currentScope;
         String condizione = (String) elifOp.getExprOp().accept(this);
-
+        if (!condizione.equals("boolean")) {
+            throw new RuntimeException("La condizione non è un bool");
+        }
         currentScope = elifOp.getElifTable();
         elifOp.getBodyOp().accept(this);
         currentScope = tmp;
