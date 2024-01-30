@@ -2,10 +2,7 @@ package visitors;
 
 import nodi.*;
 import nodi.expr.*;
-import nodi.statements.ElifOp;
-import nodi.statements.IfOp;
-import nodi.statements.Stat;
-import nodi.statements.WhileOp;
+import nodi.statements.*;
 import tables.FieldType;
 import tables.Row;
 import tables.SymbolTable;
@@ -66,6 +63,8 @@ public class ScopeVisitor implements Visitor{
 
         return null;
     }
+
+
 
     @Override
     public Object visit(FunCallOp funCallOp) throws Exception {
@@ -203,7 +202,7 @@ public class ScopeVisitor implements Visitor{
             }
         }
 
-        if (!(stat instanceof WhileOp) && !(stat instanceof IfOp) && !(stat instanceof ElifOp) && !(stat instanceof ProcCallOp)) {
+        if (!(stat instanceof WhileOp) && !(stat instanceof IfOp) && !(stat instanceof ElifOp) && !(stat instanceof ProcCallOp)&&!(stat instanceof LetOp)) {
 
 
             if (!stat.getExprs().isEmpty()) {
@@ -229,6 +228,10 @@ public class ScopeVisitor implements Visitor{
             stat.accept(this);
         }
 
+        if (stat instanceof LetOp) {
+            stat.accept(this);
+        }
+
 
         return null;
     }
@@ -249,6 +252,54 @@ public class ScopeVisitor implements Visitor{
     }
 
     @Override
+    public Object visit(GoWhen goWhen) throws Exception {
+
+        if (goWhen.getCondizione()!=null) {
+            goWhen.getCondizione().accept(this);
+        }
+        if (goWhen.getStats()!=null) {
+            for (Stat s : goWhen.getStats()) {
+                s.accept(this);
+            }
+        }
+        if (goWhen.getOtherGo()!=null) {
+            for (GoWhen g : goWhen.getOtherGo()) {
+                g.accept(this);
+            }
+        }
+        if (goWhen.getOtherwise()!=null) {
+            for (Stat s :goWhen.getOtherwise()) {
+                s.accept(this);
+            }
+        }
+        return null;
+    }
+
+    @Override
+    public Object visit(LetOp letOp) throws Exception {
+        letOp.setSymbolTable(new SymbolTable());
+        SymbolTable table = letOp.getSymbolTable();
+        table.setScope("Let");
+        table.setFather(father);
+        father = letOp.getSymbolTable();
+        if (letOp.getVardecl()!=null) {
+            ArrayList<Row> varList;
+            for (Decls d: letOp.getVardecl()) {
+                varList = (ArrayList<Row>) d.accept(this);
+                for (Row r:varList) {
+                    father.addRow(r);
+                }
+            }
+        }
+
+        if (letOp.getGoWhen()!=null) {
+            letOp.getGoWhen().accept(this);
+        }
+    father = table.getFather();
+        return null;
+    }
+
+    @Override
     public Object visit(BodyOp bodyOp) throws Exception {
 
         if (bodyOp.getDecls()!=null) {
@@ -265,7 +316,7 @@ public class ScopeVisitor implements Visitor{
          if (bodyOp.getStats() != null) {
 
              for (Stat s:bodyOp.getStats()) {
-                 if (!(s instanceof WhileOp) && !(s instanceof IfOp) && !(s instanceof ElifOp) &&!(s instanceof ProcCallOp)) {
+                 if (!(s instanceof WhileOp) && !(s instanceof IfOp) && !(s instanceof ElifOp) &&!(s instanceof ProcCallOp)&&!(s instanceof LetOp)) {
                      if (s.getIds() != null && !s.getIds().isEmpty() || s.getValue().equals("READ")||s.getValue().equals("WRITE")||s.getValue().equals("WRITERETURN")) {
                          s.accept(this);
                      }
@@ -280,9 +331,12 @@ public class ScopeVisitor implements Visitor{
                      s.accept(this);
                  }
                 if (s instanceof ProcCallOp) {
-
                     s.accept(this);
                 }
+
+                 if (s instanceof LetOp) {
+                     s.accept(this);
+                 }
              }
          }
 

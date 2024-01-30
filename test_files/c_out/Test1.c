@@ -67,6 +67,10 @@ while (a<b) {
 printf("due \n");
 a = a+1;
 }
+while (a==b) {
+printf("3 \n");
+a = a+2;
+}
 printf("sono uguali ");
 }
 }

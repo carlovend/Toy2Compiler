@@ -1,0 +1,45 @@
+
+
+
+
+
+
+% programma principale %
+proc main():
+      var
+	a, b ^= 1, 2.2; x ^= 3;
+	taglia, ans1 : string;
+	ans ^= "no";
+	risultato ^= 0.0;\
+
+
+	var valore ^= "nok";\
+
+    let (a^=a+1; )
+    go when (a>b) loop {
+
+       -->! "uno";
+       a ^= a-1;
+
+    } when (a<b) loop {
+        -->!"due";
+            a ^= a+1;
+    }
+      when (a=b) loop {
+              -->!"3";
+                  a ^= a+2;
+          }
+       when (a<>b) loop {
+                     -->!"4";
+                         a ^= a+3;
+                 }
+      otherwisedo {
+                    while(a = b) do
+                    a ^= a+5;
+                    endwhile;
+              -->" non sono uguali";
+    };
+
+endproc
+
+

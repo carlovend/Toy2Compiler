@@ -88,12 +88,19 @@ private StringBuilder stringBuilder = new StringBuilder();
     "-->!" { return symbol(sym.WRITERETURN); }
     "$" { return symbol(sym.DOLLARSIGN); }
     "<--" { return symbol(sym.READ); }
+    "{" {return symbol(sym.GS);}
+    "}" {return symbol(sym.GD);}
+     "otherwisedo" {return symbol(sym.OTHERWISEDO);}
+    "go" {return symbol(sym.GO);}
+    "when" {return symbol(sym.WHEN);}
+    "loop" {return symbol(sym.LOOP);}
     "if" { return symbol(sym.IF); }
     "then" { return symbol(sym.THEN); }
     "else" { return symbol(sym.ELSE); }
     "endif" { return symbol(sym.ENDIF); }
     "elseif" { return symbol(sym.ELIF); }
     "while" { return symbol(sym.WHILE); }
+    "let" {return symbol(sym.LET);}
     "do" { return symbol(sym.DO); }
     "endwhile" { return symbol(sym.ENDWHILE); }
     "+" { return symbol(sym.PLUS); }

@@ -8,8 +8,13 @@ import nodi.statements.WhileOp;
 import java.util.ArrayList;
 
 
-terminal VAR, COLON, ASSIGN, UMINUS, SEMI, COMMA, REAL_CONST, INTEGER_CONST, STRING_CONST, TRUE, FALSE, REAL, INTEGER, STRING, BOOLEAN, RETURN, FUNCTION, TYPERETURN, ENDFUNCTION, LPAR, RPAR, PROCEDURE, ENDPROCEDURE, OUT, WRITE, WRITERETURN, DOLLARSIGN, READ, IF, THEN, ELSE, ENDIF, ELIF, WHILE, DO, ENDWHILE, PLUS, MINUS, TIMES, DIV, EQ, NE, LT, LE, GT, GE, AND, OR, NOT, ENDVAR, REF;
+terminal VAR, COLON, ASSIGN, GO, WHEN ,LET ,OTHERWISEDO, LOOP , GD ,GS ,UMINUS, SEMI, COMMA, REAL_CONST, INTEGER_CONST, STRING_CONST, TRUE, FALSE, REAL, INTEGER, STRING, BOOLEAN, RETURN, FUNCTION, TYPERETURN, ENDFUNCTION, LPAR, RPAR, PROCEDURE, ENDPROCEDURE, OUT, WRITE, WRITERETURN, DOLLARSIGN, READ, IF, THEN, ELSE, ENDIF, ELIF, WHILE, DO, ENDWHILE, PLUS, MINUS, TIMES, DIV, EQ, NE, LT, LE, GT, GE, AND, OR, NOT, ENDVAR, REF;
 terminal String ID;
+nonterminal LetOp Let;
+non terminal ArrayList<GoWhen>OtherGo;
+non terminal GoWhen GoWhen;
+non terminal  ArrayList<Stat> OtherwiseDo;
+non terminal ArrayList<Stat> Stats;
 nonterminal ExprOp Expr;
 nonterminal ArrayList<ExprOp> Exprs;
 nonterminal ArrayList<ExprOp> ProcExprs;
@@ -207,8 +212,26 @@ Stat ::= Ids:ids ASSIGN Exprs:exprs SEMI{:RESULT = new Stat("ASSIGN",ids,exprs);
 	 | WRITERETURN IOArgs:Ioargs SEMI{:RESULT = new Stat("WRITERETURN",Ioargs);:}
 	 | READ IOArgs:Ioargs SEMI{:RESULT = new Stat("READ",Ioargs);:}
 	 | IfStat:ifstat SEMI{:RESULT = ifstat;:}
-	 | WhileStat:whilestat SEMI{:RESULT = whilestat;:};
+	 | WhileStat:whilestat SEMI{:RESULT = whilestat;:}
+	 |Let:let SEMI {:RESULT = let;:};
 
+Let::= LET  LPAR VarDecl:vardecl RPAR  GoWhen:gowhen {:RESULT = new LetOp(vardecl,gowhen);:};
+
+GoWhen ::= GO WHEN LPAR Expr:expr RPAR LOOP GS Stats:stats GD OtherGo:othergo OtherwiseDo:otherwise {:
+RESULT = new GoWhen(expr, stats, othergo,otherwise);:};
+
+OtherGo ::= WHEN LPAR Expr:expr RPAR LOOP  GS Stats:stats GD OtherGo:othergo{:RESULT = new ArrayList<GoWhen>();
+                                                                        RESULT.add(new GoWhen(expr,stats));
+                                                                        RESULT.addAll(othergo);
+:} | /*empty*/{:RESULT = new ArrayList<GoWhen>();:};
+OtherwiseDo ::= OTHERWISEDO GS Stats:stats GD {:RESULT = new ArrayList<Stat>();
+                                                RESULT.addAll(stats);
+:}|/*empty*/{:RESULT = new ArrayList<Stat>();:};
+
+Stats::= Stat:stat Stats:stats{:RESULT = new ArrayList<Stat>();
+                                        RESULT.add(stat);
+                                        RESULT.addAll(stats);
+                                    :} | /*empty*/{:RESULT = new ArrayList<Stat>();:};
 FunCall ::= ID:id LPAR Exprs:listExprs RPAR {:RESULT = new FunCallOp(new Identifier(id,"FUNCALLID"),listExprs);:}           /* chiamata con almeno un parametro */
          | ID:id LPAR RPAR{:RESULT = new FunCallOp(new Identifier(id,"FUNCALLID"));:};             /* chiamata con nessun parametro */
 

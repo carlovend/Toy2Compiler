@@ -3,10 +3,7 @@ package visitors;
 
 import nodi.*;
 import nodi.expr.*;
-import nodi.statements.ElifOp;
-import nodi.statements.IfOp;
-import nodi.statements.Stat;
-import nodi.statements.WhileOp;
+import nodi.statements.*;
 import tables.FieldType;
 import tables.Row;
 import tables.SymbolTable;
@@ -170,6 +167,8 @@ public class TypeVisitor implements Visitor {
 
         return type;
     }
+
+
 
     @Override
     public Object visit(FunCallOp funCallOp) throws Exception {
@@ -591,6 +590,9 @@ public class TypeVisitor implements Visitor {
         if (stat instanceof ElifOp) {
             stat.accept(this);
         }
+        if (stat instanceof LetOp) {
+            stat.accept(this);
+        }
         return null;
     }
 
@@ -607,6 +609,49 @@ public class TypeVisitor implements Visitor {
         whileOp.getBodyOp().accept(this);
 
         currentScope = whileOp.getTable().getFather();
+        return null;
+    }
+
+    @Override
+    public Object visit(GoWhen goWhen) throws Exception {
+        if (goWhen.getCondizione()!=null) {
+            String condizione = (String) goWhen.getCondizione().accept(this);
+            if (!condizione.equals("boolean")) {
+                throw new RuntimeException("La condizione non è bool");
+            }
+        }
+        if (goWhen.getStats()!=null) {
+            for (Stat s : goWhen.getStats()) {
+                s.accept(this);
+            }
+        }
+        if (goWhen.getOtherGo()!=null) {
+            for (GoWhen g : goWhen.getOtherGo()) {
+                g.accept(this);
+            }
+        }
+        if (goWhen.getOtherwise()!=null) {
+            for (Stat s :goWhen.getOtherwise()) {
+                s.accept(this);
+            }
+        }
+        return null;
+    }
+
+    @Override
+    public Object visit(LetOp letOp) throws Exception {
+        SymbolTable tmp = currentScope;
+        currentScope = letOp.getSymbolTable();
+        if (letOp.getVardecl()!=null) {
+            for (Decls d : letOp.getVardecl()) {
+                d.accept(this);
+            }
+        }
+
+        if (letOp.getGoWhen()!=null) {
+            letOp.getGoWhen().accept(this);
+        }
+        currentScope = tmp;
         return null;
     }
 

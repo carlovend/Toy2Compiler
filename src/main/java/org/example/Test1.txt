@@ -23,7 +23,12 @@ proc main():
     } when (a<b) loop {
         -->!"due";
             a ^= a+1;
-    }  otherwisedo {
+    }
+      when (a=b) loop {
+              -->!"3";
+                  a ^= a+2;
+          }
+      otherwisedo {
               -->"sono uguali";
     };
 

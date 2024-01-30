@@ -2,16 +2,15 @@ package visitors;
 
 import nodi.*;
 import nodi.expr.*;
-import nodi.statements.ElifOp;
-import nodi.statements.IfOp;
-import nodi.statements.Stat;
-import nodi.statements.WhileOp;
+import nodi.statements.*;
 
 public interface Visitor {
 
     public Object visit(BinaryOP binaryOP) throws Exception;
     public Object visit(ConstOp constOp);
     public Object visit(ExprOp exprOp) throws Exception;
+    public Object visit(GoWhen goWhen) throws Exception;
+    public  Object visit(LetOp letOp) throws Exception;
     public Object visit(FunCallOp funCallOp) throws Exception;
     public Object visit(Identifier identifier) throws Exception;
     public Object visit(IoArgs ioArgs);

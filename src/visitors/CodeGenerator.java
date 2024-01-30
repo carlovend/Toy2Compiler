@@ -3,10 +3,7 @@ package visitors;
 
 import nodi.*;
 import nodi.expr.*;
-import nodi.statements.ElifOp;
-import nodi.statements.IfOp;
-import nodi.statements.Stat;
-import nodi.statements.WhileOp;
+import nodi.statements.*;
 import tables.FieldType;
 import tables.Row;
 import tables.SymbolTable;
@@ -206,6 +203,8 @@ public class CodeGenerator implements Visitor {
         return type;
     }
 
+
+
     @Override
     public Object visit(FunCallOp funCallOp) throws Exception {
         String functionName = funCallOp.getId().getId();
@@ -351,6 +350,53 @@ public class CodeGenerator implements Visitor {
         }
         writer.write("}\n");
         currentScope = elifOp.getElifTable().getFather();
+        return null;
+    }
+
+    @Override
+    public Object visit(GoWhen goWhen) throws Exception {
+        String condizione = (String) goWhen.getCondizione().accept(this);
+        condizione = estraiIdentificatori(condizione,outParam);
+
+
+        if (goWhen.getStats()!=null) {
+            writer.write("while (" + condizione + ") {\n");
+            for (Stat s : goWhen.getStats()) {
+                s.accept(this);
+            }
+            writer.write("}\n");
+        }
+
+        if (goWhen.getOtherGo()!=null) {
+            for (GoWhen g : goWhen.getOtherGo()) {
+                g.accept(this);
+            }
+        }
+
+        if (goWhen.getOtherwise()!=null) {
+            for (Stat s : goWhen.getOtherwise()) {
+                s.accept(this);
+            }
+        }
+
+        return null;
+    }
+
+    @Override
+    public Object visit(LetOp letOp) throws Exception {
+        currentScope = letOp.getSymbolTable();
+        writer.write("{\n");
+
+        if (letOp.getVardecl()!=null) {
+            for (Decls d : letOp.getVardecl()) {
+                d.accept(this);
+            }
+        }
+        if (letOp.getGoWhen()!=null) {
+            letOp.getGoWhen().accept(this);
+        }
+        writer.write("}\n");
+        currentScope = letOp.getSymbolTable().getFather();
         return null;
     }
 
@@ -742,6 +788,10 @@ public class CodeGenerator implements Visitor {
         }
 
         if (stat instanceof ElifOp) {
+            stat.accept(this);
+        }
+
+        if (stat instanceof LetOp) {
             stat.accept(this);
         }
         return null;
